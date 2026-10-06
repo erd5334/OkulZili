@@ -1,0 +1,21 @@
+e-zil (2.6.0p21) unstable; urgency=medium
+
+  * Update build depends for pardus21
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Thu, 07 Apr 2022 14:53:06 +0300
+
+e-zil (2.6.0) unstable; urgency=medium
+
+  * Import upstream version 2.6.0
+
+ -- Fatih Altun <fatih.altun@pardus.org.tr>  Thu, 07 Apr 2022 14:34:25 +0300
+
+e-zil (2.3.0) unstable; urgency=medium
+
+  [ Fatih Altun ]
+  * Update depends
+
+  [ Bayram Karahan ]
+  * Initial Release
+
+ -- Bayram KARAHAN <bayramk@gmail.com>  Sun, 27 Dec 2020 14:31:08 +0300
