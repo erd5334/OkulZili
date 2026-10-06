@@ -85,11 +85,15 @@ exit 0
 """
 
     control_tar_io = io.BytesIO()
-    with tarfile.open(fileobj=control_tar_io, mode="w:gz") as tar:
+    with tarfile.open(fileobj=control_tar_io, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
         # ./
         t = tarfile.TarInfo("./")
         t.type = tarfile.DIRTYPE
         t.mode = 0o755
+        t.uid = 0
+        t.gid = 0
+        t.uname = "root"
+        t.gname = "root"
         t.mtime = int(time.time())
         tar.addfile(t)
         
@@ -98,6 +102,10 @@ exit 0
         t = tarfile.TarInfo("./control")
         t.size = len(data_c)
         t.mode = 0o644
+        t.uid = 0
+        t.gid = 0
+        t.uname = "root"
+        t.gname = "root"
         t.mtime = int(time.time())
         tar.addfile(t, io.BytesIO(data_c))
         
@@ -106,6 +114,10 @@ exit 0
         t = tarfile.TarInfo("./postinst")
         t.size = len(data_p)
         t.mode = 0o755
+        t.uid = 0
+        t.gid = 0
+        t.uname = "root"
+        t.gname = "root"
         t.mtime = int(time.time())
         tar.addfile(t, io.BytesIO(data_p))
         
@@ -114,6 +126,10 @@ exit 0
         t = tarfile.TarInfo("./prerm")
         t.size = len(data_pr)
         t.mode = 0o755
+        t.uid = 0
+        t.gid = 0
+        t.uname = "root"
+        t.gname = "root"
         t.mtime = int(time.time())
         tar.addfile(t, io.BytesIO(data_pr))
         
@@ -136,11 +152,15 @@ StartupNotify=true
 """
 
     data_tar_io = io.BytesIO()
-    with tarfile.open(fileobj=data_tar_io, mode="w:gz") as tar:
+    with tarfile.open(fileobj=data_tar_io, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
         def add_dir(path):
             t = tarfile.TarInfo(path)
             t.type = tarfile.DIRTYPE
             t.mode = 0o755
+            t.uid = 0
+            t.gid = 0
+            t.uname = "root"
+            t.gname = "root"
             t.mtime = int(time.time())
             tar.addfile(t)
             
@@ -148,6 +168,10 @@ StartupNotify=true
             t = tarfile.TarInfo(path)
             t.size = len(content_bytes)
             t.mode = mode
+            t.uid = 0
+            t.gid = 0
+            t.uname = "root"
+            t.gname = "root"
             t.mtime = int(time.time())
             tar.addfile(t, io.BytesIO(content_bytes))
             
