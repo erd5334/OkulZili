@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Okul Zili - Windows Portable EXE ve Paket Derleyici
-PyInstaller kullanarak tek tıkla çalışabilen bağımsız Windows sürümünü derler.
+Er Yazilim Okul Zili - Windows Portable EXE ve Paket Derleyici
 """
 
 import os
@@ -10,7 +9,12 @@ import sys
 import shutil
 import subprocess
 import zipfile
-from PIL import Image
+
+# Set encoding for Windows console
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "WINDOWS_KURULUMSUZ_OKUL_ZILI")
@@ -21,16 +25,17 @@ def prepare_icon():
     png_path = os.path.join(BASE_DIR, "ezil0.png")
     if not os.path.exists(ico_path) and os.path.exists(png_path):
         try:
+            from PIL import Image
             img = Image.open(png_path)
             img.save(ico_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-            print("[+] app_icon.ico oluşturuldu.")
+            print("[+] app_icon.ico olusturuldu.")
         except Exception as e:
-            print(f"[!] İkon oluşturma hatası: {e}")
+            print(f"[!] Ikon olusturma uyarisi: {e}")
     return ico_path if os.path.exists(ico_path) else None
 
 def build_exe():
     print("=" * 60)
-    print("   Okul Zili v2.6.0 - Windows EXE Derleme Aracı")
+    print("   Er Yazilim Okul Zili v2.6.0 - Windows Derleme")
     print("=" * 60)
     
     ico_path = prepare_icon()
@@ -49,22 +54,24 @@ def build_exe():
         
     cmd.append(os.path.join(BASE_DIR, "okul_zili.py"))
     
-    print(f"[*] PyInstaller çalıştırılıyor...")
+    print("[*] PyInstaller calistiriliyor...")
     result = subprocess.run(cmd, cwd=BASE_DIR)
     
     if result.returncode != 0:
-        print("[!] PyInstaller derleme hatası oluştu!")
+        print(f"[!] PyInstaller derleme hatasi! Kod: {result.returncode}")
         return False
         
     dist_folder = os.path.join(BASE_DIR, "dist", "OkulZili")
-    
+    if not os.path.exists(dist_folder):
+        print(f"[!] Dist klasoru bulunamadi: {dist_folder}")
+        return False
+        
     # Hedef klasörü hazırla
     if os.path.exists(OUTPUT_DIR):
         shutil.rmtree(OUTPUT_DIR)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
     print(f"[*] Dosyalar paketleniyor -> {OUTPUT_DIR}")
-    # Dist içeriğini kopyala
     for item in os.listdir(dist_folder):
         s = os.path.join(dist_folder, item)
         d = os.path.join(OUTPUT_DIR, item)
@@ -85,7 +92,7 @@ def build_exe():
             shutil.copy2(os.path.join(BASE_DIR, f), os.path.join(OUTPUT_DIR, f))
             
     # ZIP arşivi oluştur
-    print(f"[*] Taşınabilir ZIP paketi oluşturuluyor -> {ZIP_OUTPUT}")
+    print(f"[*] Tasinabilir ZIP paketi olusturuluyor -> {ZIP_OUTPUT}")
     with zipfile.ZipFile(ZIP_OUTPUT, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(OUTPUT_DIR):
             for file in files:
@@ -93,10 +100,14 @@ def build_exe():
                 arcname = os.path.relpath(file_path, BASE_DIR)
                 zipf.write(file_path, arcname)
                 
-    print(f"[+] Başarıyla tamamlandı!")
-    print(f"    - Klasör: {OUTPUT_DIR}")
-    print(f"    - ZIP Dosyası: {ZIP_OUTPUT} ({os.path.getsize(ZIP_OUTPUT) // 1024 // 1024} MB)")
-    return True
+    if os.path.exists(ZIP_OUTPUT):
+        size_mb = os.path.getsize(ZIP_OUTPUT) // (1024 * 1024)
+        print(f"[+] Basariyla tamamlandi! ZIP Boyutu: {size_mb} MB")
+        return True
+    else:
+        print("[!] ZIP dosyasi olusturulamadi!")
+        return False
 
 if __name__ == "__main__":
-    build_exe()
+    success = build_exe()
+    sys.exit(0 if success else 1)

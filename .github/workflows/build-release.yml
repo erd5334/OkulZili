@@ -13,6 +13,8 @@ jobs:
   build-linux-deb:
     name: Build Linux .deb Package
     runs-on: ubuntu-latest
+    env:
+      PYTHONIOENCODING: "utf-8"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,6 +37,8 @@ jobs:
   build-windows-exe:
     name: Build Windows Portable EXE
     runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: "utf-8"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
