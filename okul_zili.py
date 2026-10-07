@@ -520,23 +520,8 @@ class OkulZilApp:
         # Periyodik GUI güncellemesi (1 saniye)
         self._gui_guncelle()
 
-        # Qt Multimedia olay döngüsü pompası (Tkinter ile PySide6 senkronizasyonu)
-        self._qt_event_dongusu()
-
         # Kapatma protokolü
         self.root.protocol("WM_DELETE_WINDOW", self._on_kapat)
-
-    def _qt_event_dongusu(self):
-        if hasattr(self, "player") and self.player and self.player.qt_app:
-            try:
-                self.player.qt_app.processEvents()
-            except Exception:
-                pass
-        if getattr(self, "calisiyor", True):
-            try:
-                self.root.after(40, self._qt_event_dongusu)
-            except Exception:
-                pass
 
     def _ikon_yukle(self):
         for icon_name in ["ezil1.png", "ezil2.png", "ezil0.png"]:
