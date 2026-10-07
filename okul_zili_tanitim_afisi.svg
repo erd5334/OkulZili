@@ -1,0 +1,349 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bgGlow" cx="25%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#0f2b48" />
+      <stop offset="60%" stop-color="#09131d" />
+      <stop offset="100%" stop-color="#05090e" />
+    </radialGradient>
+    <radialGradient id="cyanGlow" cx="80%" cy="25%" r="45%">
+      <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="amberGlow" cx="20%" cy="75%" r="40%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Linear Gradients -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95" />
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="redFlag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#be123c" />
+    </linearGradient>
+
+    <!-- Drop Shadows & Filters -->
+    <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <style>
+    .font-sans { font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; }
+    .brand-title { font-weight: 900; letter-spacing: 3px; }
+    .hero-title { font-weight: 800; }
+    .card-title { font-weight: 700; }
+    .badge-text { font-weight: 600; letter-spacing: 0.5px; }
+  </style>
+
+  <!-- ================= BACKGROUND ================= -->
+  <rect width="1920" height="1080" fill="url(#bgGlow)" />
+  <rect width="1920" height="1080" fill="url(#cyanGlow)" />
+  <rect width="1920" height="1080" fill="url(#amberGlow)" />
+
+  <!-- Subtle Cyber Grid Background -->
+  <g stroke="#ffffff" stroke-width="1" opacity="0.04">
+    <line x1="0" y1="180" x2="1920" y2="180" />
+    <line x1="0" y1="360" x2="1920" y2="360" />
+    <line x1="0" y1="540" x2="1920" y2="540" />
+    <line x1="0" y1="720" x2="1920" y2="720" />
+    <line x1="0" y1="900" x2="1920" y2="900" />
+    <line x1="240" y1="0" x2="240" y2="1080" />
+    <line x1="480" y1="0" x2="480" y2="1080" />
+    <line x1="720" y1="0" x2="720" y2="1080" />
+    <line x1="960" y1="0" x2="960" y2="1080" />
+    <line x1="1200" y1="0" x2="1200" y2="1080" />
+    <line x1="1440" y1="0" x2="1440" y2="1080" />
+    <line x1="1680" y1="0" x2="1680" y2="1080" />
+  </g>
+
+  <!-- ================= TOP HEADER BAR ================= -->
+  <g transform="translate(100, 70)">
+    <!-- Logo Badge -->
+    <rect x="0" y="0" width="60" height="60" rx="16" fill="url(#cyanGrad)" />
+    <!-- Bell icon inside logo -->
+    <path d="M 30 16 C 24 16 20 21 20 28 L 18 38 L 42 38 L 40 28 C 40 21 36 16 30 16 Z M 27 41 C 27 43 28.5 44.5 30 44.5 C 31.5 44.5 33 43 33 41 Z" fill="#ffffff" />
+    <circle cx="30" cy="14" r="2.5" fill="#ffffff" />
+
+    <!-- Brand Text -->
+    <text x="76" y="32" class="font-sans brand-title" font-size="28" fill="#ffffff">ER YAZILIM</text>
+    <text x="76" y="54" class="font-sans" font-size="16" fill="#94a3b8" letter-spacing="1">MASAÜSTÜ PROGRAMLAMA ÇÖZÜMLERİ</text>
+
+    <!-- Official Website Badge in Header -->
+    <g transform="translate(1420, 5)">
+      <rect x="0" y="0" width="300" height="50" rx="25" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" opacity="0.9" />
+      <circle cx="30" cy="25" r="10" fill="#38bdf8" fill-opacity="0.2" />
+      <circle cx="30" cy="25" r="4" fill="#38bdf8" />
+      <text x="56" y="32" class="font-sans badge-text" font-size="18" fill="#e2e8f0">eryazilimci.com</text>
+    </g>
+  </g>
+
+  <!-- ================= LEFT HERO COLUMN ================= -->
+  <g transform="translate(100, 200)">
+    <!-- Version & MEB Badge -->
+    <g>
+      <rect x="0" y="0" width="330" height="38" rx="19" fill="#0369a1" fill-opacity="0.3" stroke="#38bdf8" stroke-width="1" />
+      <text x="20" y="24" class="font-sans badge-text" font-size="15" fill="#38bdf8">✨ SÜRÜM v2.7.0 • MEB İLE %100 UYUMLU</text>
+    </g>
+
+    <!-- Main Title -->
+    <text x="0" y="110" class="font-sans hero-title" font-size="64" fill="#ffffff">OKUL ZİL VE TÖREN</text>
+    <text x="0" y="180" class="font-sans hero-title" font-size="64" fill="url(#goldGrad)">YÖNETİM SİSTEMİ</text>
+
+    <text x="0" y="235" class="font-sans" font-size="22" fill="#94a3b8">
+      Okullara özel akıllı zamanlayıcı, yapay zeka anons stüdyosu,
+    </text>
+    <text x="0" y="268" class="font-sans" font-size="22" fill="#94a3b8">
+      tören &amp; İstiklal Marşı modu ve teneffüs radyosu tek bir merkezde!
+    </text>
+
+    <!-- Feature Grid / Pills -->
+    <g transform="translate(0, 320)">
+      <!-- Feature 1: AI Anons -->
+      <g transform="translate(0, 0)">
+        <rect width="360" height="85" rx="16" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" filter="url(#cardShadow)" />
+        <rect x="18" y="18" width="48" height="48" rx="12" fill="#0284c7" fill-opacity="0.25" />
+        <text x="32" y="50" font-size="24">🎙️</text>
+        <text x="80" y="42" class="font-sans card-title" font-size="18" fill="#f8fafc">Yapay Zeka Anons Stüdyosu</text>
+        <text x="80" y="62" class="font-sans" font-size="13" fill="#94a3b8">Yazıyı anında profesyonel sese çevir</text>
+      </g>
+
+      <!-- Feature 2: Tören & İstiklal Marşı -->
+      <g transform="translate(380, 0)">
+        <rect width="360" height="85" rx="16" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" filter="url(#cardShadow)" />
+        <rect x="18" y="18" width="48" height="48" rx="12" fill="#e11d48" fill-opacity="0.2" />
+        <text x="32" y="50" font-size="24">🇹🇷</text>
+        <text x="80" y="42" class="font-sans card-title" font-size="18" fill="#f8fafc">Tören &amp; İstiklal Marşı</text>
+        <text x="80" y="62" class="font-sans" font-size="13" fill="#94a3b8">Tek tıkla saygı duruşu ve marş yayını</text>
+      </g>
+
+      <!-- Feature 3: Teneffüs Radyosu -->
+      <g transform="translate(0, 105)">
+        <rect width="360" height="85" rx="16" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" filter="url(#cardShadow)" />
+        <rect x="18" y="18" width="48" height="48" rx="12" fill="#f59e0b" fill-opacity="0.2" />
+        <text x="32" y="50" font-size="24">📻</text>
+        <text x="80" y="42" class="font-sans card-title" font-size="18" fill="#f8fafc">Teneffüs Müzik Radyosu</text>
+        <text x="80" y="62" class="font-sans" font-size="13" fill="#94a3b8">Ders aralarında kesintisiz dinlendirici müzik</text>
+      </g>
+
+      <!-- Feature 4: Çoklu Ses Kartı / Amfi -->
+      <g transform="translate(380, 105)">
+        <rect width="360" height="85" rx="16" fill="url(#cardGrad)" stroke="#334155" stroke-width="1.5" filter="url(#cardShadow)" />
+        <rect x="18" y="18" width="48" height="48" rx="12" fill="#10b981" fill-opacity="0.2" />
+        <text x="32" y="50" font-size="24">🔊</text>
+        <text x="80" y="42" class="font-sans card-title" font-size="18" fill="#f8fafc">İç / Dış Amfi Çıkış Seçimi</text>
+        <text x="80" y="62" class="font-sans" font-size="13" fill="#94a3b8">Okul içi ve bahçe hoparlörlerini ayrı yönet</text>
+      </g>
+    </g>
+
+    <!-- Platform Support Badges -->
+    <g transform="translate(0, 560)">
+      <text x="0" y="32" class="font-sans badge-text" font-size="16" fill="#64748b">TAM UYUMLU SİSTEMLER:</text>
+
+      <!-- Windows -->
+      <g transform="translate(180, 5)">
+        <rect width="130" height="40" rx="10" fill="#1e293b" stroke="#334155" />
+        <text x="16" y="26" font-size="18">🪟</text>
+        <text x="44" y="26" class="font-sans badge-text" font-size="15" fill="#f1f5f9">Windows</text>
+      </g>
+
+      <!-- Pardus -->
+      <g transform="translate(325, 5)">
+        <rect width="120" height="40" rx="10" fill="#1e293b" stroke="#334155" />
+        <text x="16" y="26" font-size="18">🐆</text>
+        <text x="44" y="26" class="font-sans badge-text" font-size="15" fill="#f1f5f9">Pardus</text>
+      </g>
+
+      <!-- Linux / Lubuntu -->
+      <g transform="translate(460, 5)">
+        <rect width="160" height="40" rx="10" fill="#1e293b" stroke="#334155" />
+        <text x="16" y="26" font-size="18">🐧</text>
+        <text x="44" y="26" class="font-sans badge-text" font-size="15" fill="#f1f5f9">Linux / Lubuntu</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= RIGHT UI DASHBOARD MOCKUP ================= -->
+  <g transform="translate(940, 190)" filter="url(#cardShadow)">
+    <!-- Main Window Frame (Interactive Smartboard Look) -->
+    <rect width="880" height="580" rx="24" fill="url(#screenGrad)" stroke="#38bdf8" stroke-width="2.5" />
+
+    <!-- Window Top Header -->
+    <path d="M 0 24 C 0 10.7 10.7 0 24 0 L 856 0 C 869.3 0 880 10.7 880 24 L 880 60 L 0 60 Z" fill="#1e293b" />
+    <circle cx="35" cy="30" r="7" fill="#ef4444" />
+    <circle cx="60" cy="30" r="7" fill="#f59e0b" />
+    <circle cx="85" cy="30" r="7" fill="#10b981" />
+    <text x="120" y="36" class="font-sans badge-text" font-size="16" fill="#cbd5e1">Er Yazılım • Okul Zil Sistemi v2.7.0 (MEB Modu)</text>
+    <rect x="730" y="15" width="130" height="30" rx="15" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="1" />
+    <circle cx="745" cy="30" r="4" fill="#10b981" />
+    <text x="758" y="35" class="font-sans badge-text" font-size="13" fill="#10b981">SİSTEM AKTİF</text>
+
+    <!-- Sidebar Navigation Mockup -->
+    <g transform="translate(20, 80)">
+      <rect width="200" height="470" rx="16" fill="#0f172a" stroke="#1e293b" />
+      <g transform="translate(15, 20)">
+        <rect width="170" height="42" rx="10" fill="url(#cyanGrad)" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#ffffff">🔔 Zil Çizelgesi</text>
+      </g>
+      <g transform="translate(15, 75)">
+        <rect width="170" height="42" rx="10" fill="#1e293b" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#94a3b8">🎙️ AI Anons Stüdyosu</text>
+      </g>
+      <g transform="translate(15, 130)">
+        <rect width="170" height="42" rx="10" fill="#1e293b" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#94a3b8">🇹🇷 Tören &amp; İstiklal M.</text>
+      </g>
+      <g transform="translate(15, 185)">
+        <rect width="170" height="42" rx="10" fill="#1e293b" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#94a3b8">📻 Teneffüs Radyosu</text>
+      </g>
+      <g transform="translate(15, 240)">
+        <rect width="170" height="42" rx="10" fill="#1e293b" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#94a3b8">🔇 Sınav / Sessiz Mod</text>
+      </g>
+      <g transform="translate(15, 295)">
+        <rect width="170" height="42" rx="10" fill="#1e293b" />
+        <text x="15" y="27" class="font-sans badge-text" font-size="14" fill="#94a3b8">⚙️ Genel Ayarlar</text>
+      </g>
+
+      <!-- Digital Clock inside Sidebar -->
+      <g transform="translate(15, 380)">
+        <rect width="170" height="70" rx="12" fill="#020617" stroke="#334155" />
+        <text x="25" y="34" class="font-sans badge-text" font-size="12" fill="#64748b">CANLI SAAT</text>
+        <text x="25" y="58" class="font-sans" font-size="24" font-weight="800" fill="#38bdf8">08:45:12</text>
+      </g>
+    </g>
+
+    <!-- Main Content Area Mockup -->
+    <g transform="translate(240, 80)">
+      <!-- Bell Schedule Table -->
+      <rect width="360" height="470" rx="16" fill="#0f172a" stroke="#1e293b" />
+      <text x="20" y="35" class="font-sans card-title" font-size="16" fill="#ffffff">Günlük Ders Programı</text>
+
+      <!-- Schedule rows -->
+      <g transform="translate(15, 55)">
+        <!-- Row 1 (Current Active) -->
+        <g transform="translate(0, 0)">
+          <rect width="330" height="52" rx="10" fill="#0369a1" fill-opacity="0.3" stroke="#38bdf8" />
+          <circle cx="20" cy="26" r="6" fill="#38bdf8" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#ffffff">1. Ders Giriş Zili</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#93c5fd">Melodi: Ogretmen_Zili.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="700" fill="#38bdf8">08:30</text>
+        </g>
+        <!-- Row 2 -->
+        <g transform="translate(0, 60)">
+          <rect width="330" height="52" rx="10" fill="#1e293b" />
+          <circle cx="20" cy="26" r="6" fill="#64748b" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#cbd5e1">1. Ders Çıkış Zili</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#64748b">Melodi: Cikis_Zili.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="600" fill="#94a3b8">09:10</text>
+        </g>
+        <!-- Row 3 -->
+        <g transform="translate(0, 120)">
+          <rect width="330" height="52" rx="10" fill="#1e293b" />
+          <circle cx="20" cy="26" r="6" fill="#64748b" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#cbd5e1">2. Ders Giriş Zili</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#64748b">Melodi: Giris_Zili.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="600" fill="#94a3b8">09:25</text>
+        </g>
+        <!-- Row 4 -->
+        <g transform="translate(0, 180)">
+          <rect width="330" height="52" rx="10" fill="#1e293b" />
+          <circle cx="20" cy="26" r="6" fill="#64748b" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#cbd5e1">2. Ders Çıkış Zili</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#64748b">Melodi: Cikis_Zili.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="600" fill="#94a3b8">10:05</text>
+        </g>
+        <!-- Row 5 -->
+        <g transform="translate(0, 240)">
+          <rect width="330" height="52" rx="10" fill="#1e293b" />
+          <circle cx="20" cy="26" r="6" fill="#64748b" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#cbd5e1">3. Ders Giriş Zili</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#64748b">Melodi: Giris_Zili.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="600" fill="#94a3b8">10:20</text>
+        </g>
+        <!-- Row 6 -->
+        <g transform="translate(0, 300)">
+          <rect width="330" height="52" rx="10" fill="#1e293b" />
+          <circle cx="20" cy="26" r="6" fill="#64748b" />
+          <text x="35" y="25" class="font-sans badge-text" font-size="14" fill="#cbd5e1">Öğle Arası / Teneffüs</text>
+          <text x="35" y="42" class="font-sans" font-size="12" fill="#64748b">Radyo: Klasik_Dizi.mp3</text>
+          <text x="260" y="33" class="font-sans" font-size="16" font-weight="600" fill="#94a3b8">12:30</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Quick Action Cards (Right inside Mockup) -->
+    <g transform="translate(615, 80)">
+      <!-- Ceremony Card -->
+      <rect width="245" height="225" rx="16" fill="#1e293b" stroke="#e11d48" stroke-width="1.5" />
+      <rect width="245" height="70" rx="16" fill="url(#redFlag)" />
+      <!-- Mini crescent & star in header -->
+      <circle cx="45" cy="35" r="16" fill="#ffffff" />
+      <circle cx="49" cy="35" r="13" fill="#be123c" />
+      <polygon points="56,35 59,32 63,33 60,36 61,40 58,38 54,40 56,36 53,33 57,32" fill="#ffffff" transform="scale(0.8) translate(18,5)" />
+      <text x="80" y="42" class="font-sans hero-title" font-size="18" fill="#ffffff">Tören Paneli</text>
+
+      <g transform="translate(20, 95)">
+        <rect width="205" height="42" rx="10" fill="#be123c" />
+        <text x="25" y="27" class="font-sans badge-text" font-size="14" fill="#ffffff">▶️ İstiklal Marşı Çal</text>
+      </g>
+      <g transform="translate(20, 150)">
+        <rect width="205" height="42" rx="10" fill="#334155" />
+        <text x="25" y="27" class="font-sans badge-text" font-size="14" fill="#cbd5e1">⏱️ Saygı Duruşu (Ti)</text>
+      </g>
+
+      <!-- AI Studio Quick Widget -->
+      <g transform="translate(0, 245)">
+        <rect width="245" height="225" rx="16" fill="#1e293b" stroke="#0284c7" stroke-width="1.5" />
+        <text x="20" y="35" class="font-sans card-title" font-size="16" fill="#38bdf8">🎙️ Hızlı Anons Oluştur</text>
+        <rect x="15" y="55" width="215" height="85" rx="10" fill="#0f172a" stroke="#334155" />
+        <text x="25" y="80" class="font-sans" font-size="12" fill="#94a3b8">"Sayın Öğretmenlerimiz,</text>
+        <text x="25" y="100" class="font-sans" font-size="12" fill="#94a3b8">Öğretmenler Kurulu toplantısı</text>
+        <text x="25" y="120" class="font-sans" font-size="12" fill="#94a3b8">saat 13:00'te başlayacaktır."</text>
+
+        <rect x="15" y="155" width="215" height="42" rx="10" fill="url(#cyanGrad)" />
+        <text x="40" y="181" class="font-sans badge-text" font-size="14" fill="#ffffff">⚡ Seslendir &amp; Çal</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ================= BOTTOM FOOTER BAR ================= -->
+  <g transform="translate(100, 930)">
+    <!-- Big Website & Download Banner -->
+    <rect width="1720" height="90" rx="20" fill="url(#cardGrad)" stroke="#38bdf8" stroke-width="2" filter="url(#cardShadow)" />
+
+    <!-- Left side call to action -->
+    <g transform="translate(40, 28)">
+      <circle cx="20" cy="18" r="8" fill="#10b981" />
+      <text x="45" y="24" class="font-sans card-title" font-size="24" fill="#ffffff">Açık Kaynak, Ücretsiz ve Taşınabilir Okul Zil Yazılımı</text>
+      <text x="45" y="48" class="font-sans" font-size="15" fill="#94a3b8">Detaylı bilgi, diğer masaüstü programlarımız ve hemen indirmek için web sitemizi ziyaret edin.</text>
+    </g>
+
+    <!-- Right side Official Domain Link -->
+    <g transform="translate(1220, 20)">
+      <rect width="460" height="52" rx="14" fill="url(#cyanGrad)" />
+      <text x="35" y="34" class="font-sans brand-title" font-size="22" fill="#ffffff">🌐 https://eryazilimci.com</text>
+    </g>
+  </g>
+</svg>
