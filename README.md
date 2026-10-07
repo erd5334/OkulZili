@@ -1,17 +1,23 @@
-# 🔔 Okul Zili & Tören Yönetim Sistemi
+# 🔔 Er Yazılım • Okul Zili & Tören Yönetim Sistemi
 
 [![Platform](https://img.shields.io/badge/Platform-Pardus%20%7C%20Linux%20%7C%20Windows-blue.svg)](https://github.com)
 [![Python Version](https://img.shields.io/badge/Python-3.8%2B-green.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-GPL%20v3-orange.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Stabil%20v2.6.0-brightgreen.svg)](https://github.com)
+[![Status](https://img.shields.io/badge/Status-Stabil%20v2.7.0-brightgreen.svg)](https://github.com)
 
-**Okul Zili & Tören Yönetim Sistemi**, Milli Eğitim Bakanlığı (MEB) müfredatına, ilkokul, ortaokul ve liselerin günlük zil, tören, anons ve teneffüs müzik yayını ihtiyaçlarına göre tasarlanmış açık kaynaklı, modern ve kararlı bir masaüstü uygulamasıdır.
+**Er Yazılım Okul Zili & Tören Yönetim Sistemi**, Milli Eğitim Bakanlığı (MEB) müfredatına, ilkokul, ortaokul ve liselerin günlük zil, tören, anons ve teneffüs müzik yayını ihtiyaçlarına göre tasarlanmış açık kaynaklı, modern ve kararlı bir masaüstü uygulamasıdır.
 
 Pardus, Lubuntu, Ubuntu, Debian ve Windows 7/10/11 sistemlerinde sorunsuz çalışır.
 
 ---
 
 ## ✨ Temel Özellikler
+
+- 🎙️ **Yapay Zeka Anons Stüdyosu (Yeni!):**
+  - Mikrofon veya harici kayda gerek olmadan doğrudan program içinden anons metnini yazıp seslendirme.
+  - Doğal Türkçe yapay zeka modelleri (Kadın & Erkek Öğretmen tonlamaları).
+  - İlkokul için neşeli/tatlı tonlama, konuşma hızı ve duygu ayarları.
+  - Dinleyip önizleme ve tek tıkla canlı duyuru paneline ekleme.
 
 - ⏰ **Akıllı Zil Çizelgesi:**
   - 7 gün bağımsız programlama (Hafta İçi, Hafta Sonu, Kurslar).

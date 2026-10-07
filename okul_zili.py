@@ -16,9 +16,12 @@ import shutil
 import random
 import threading
 import subprocess
+import warnings
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+
+warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*Failed to disconnect.*")
 
 # Uygulama Dizinleri
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,17 +34,27 @@ else:
 
 CONFIG_FILE = os.path.join(DATA_DIR, "ayarlar.json")
 SES_HEDEF_DIR = os.path.join(DATA_DIR, "sesler")
+ANONSLAR_USER_DIR = os.path.join(DATA_DIR, "anonslar")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(SES_HEDEF_DIR, exist_ok=True)
+os.makedirs(ANONSLAR_USER_DIR, exist_ok=True)
 
 # Dahili ses dosyalarının varsayılan yolları
 DEFAULT_SOUNDS_CANDIDATES = [
+    os.path.join(APP_DIR, "musics", "e-zil-ses", "Anonslar"),
+    os.path.join(APP_DIR, "musics", "e-zil-ses", "Ses"),
+    os.path.join(APP_DIR, "musics", "e-zil-ses", "Resmi"),
     os.path.join(APP_DIR, "musics", "e-zil-ses"),
     os.path.join(APP_DIR, "musics"),
+    "/usr/share/okul-zili/musics/e-zil-ses/Anonslar",
+    "/usr/share/okul-zili/musics/e-zil-ses/Ses",
+    "/usr/share/okul-zili/musics/e-zil-ses/Resmi",
+    "/usr/share/okul-zili/musics",
     "/usr/share/e-zil/musics",
     "/usr/share/okul_zili/sesler",
     os.path.join(HOME_DIR, "e-zil-ses"),
+    ANONSLAR_USER_DIR,
     SES_HEDEF_DIR
 ]
 
@@ -53,6 +66,48 @@ def varsayilan_ses_bul(alt_yol):
         if os.path.exists(tam_yol):
             return tam_yol
     return ""
+
+def anons_kayit_dizini_getir():
+    """Linux ve Windows'ta her zaman güvenli yazma izni olan anons klasörünü döndürür."""
+    # 1. Proje içindeki musics/e-zil-ses/Anonslar yazılabilir mi?
+    yerel_anons_dir = os.path.join(APP_DIR, "musics", "e-zil-ses", "Anonslar")
+    if os.path.exists(yerel_anons_dir) and os.access(yerel_anons_dir, os.W_OK):
+        return yerel_anons_dir
+    yerel_musics = os.path.join(APP_DIR, "musics")
+    if os.path.exists(yerel_musics) and os.access(yerel_musics, os.W_OK):
+        return yerel_musics
+    # 2. Linux /usr/share altında kuruluysa kullanıcı ev dizini altındaki anonslar klasörünü döndür
+    os.makedirs(ANONSLAR_USER_DIR, exist_ok=True)
+    return ANONSLAR_USER_DIR
+
+def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0%", pitch="+0Hz"):
+    """
+    edge-tts kullanarak metni sese dönüştürür ve cikti_yolu'na kaydeder.
+    SSL sertifikası hatalarına karşı esnek (MEB / antivirüs SSL inspection korumalı) çalışır.
+    """
+    import ssl
+    import asyncio
+    try:
+        import edge_tts
+        import edge_tts.communicate
+        import edge_tts.voices
+        
+        # SSL sertifika doğrulamasını bypass et (Okul MEB ağı / self-signed proxy uyumu)
+        ssl_ctx = ssl._create_unverified_context()
+        edge_tts.communicate._SSL_CTX = ssl_ctx
+        if hasattr(edge_tts, "voices") and hasattr(edge_tts.voices, "_SSL_CTX"):
+            edge_tts.voices._SSL_CTX = ssl_ctx
+            
+        async def _uret():
+            communicate = edge_tts.Communicate(metin, ses_modeli, rate=rate, pitch=pitch)
+            await communicate.save(cikti_yolu)
+            
+        asyncio.run(_uret())
+        return True, "Başarılı"
+    except ImportError:
+        return False, "edge-tts kütüphanesi kurulu değil. Lütfen 'pip install edge-tts' çalıştırın."
+    except Exception as e:
+        return False, f"Ses sentezleme hatası: {e}"
 
 # Zil Türleri ve İsimleri
 ZIL_TURLERI = {
@@ -622,18 +677,21 @@ class OkulZilApp:
         self.tab_program = ttk.Frame(self.tabs, padding=10)
         self.tab_muzik = ttk.Frame(self.tabs, padding=10)
         self.tab_sesler = ttk.Frame(self.tabs, padding=10)
+        self.tab_anons_olustur = ttk.Frame(self.tabs, padding=10)
         self.tab_ayarlar = ttk.Frame(self.tabs, padding=10)
 
         self.tabs.add(self.tab_ana, text="  🏠 Canlı Durum & Törenler  ")
         self.tabs.add(self.tab_program, text="  📅 Zil Çizelgesi  ")
         self.tabs.add(self.tab_muzik, text="  📻 Müzik Çalar (Radyo)  ")
         self.tabs.add(self.tab_sesler, text="  🎵 Sesler & Anonslar  ")
+        self.tabs.add(self.tab_anons_olustur, text="  🎙️ Kendi Anonsunu Oluştur  ")
         self.tabs.add(self.tab_ayarlar, text="  ⚙️ Sistem Ayarları  ")
 
         self._kur_tab_ana()
         self._kur_tab_program()
         self._kur_tab_muzik()
         self._kur_tab_sesler()
+        self._kur_tab_anons_olustur()
         self._kur_tab_ayarlar()
 
         self.status_bar = tk.Frame(self.root, bg="#e9ecef", height=28, relief="sunken", bd=1)
@@ -2132,7 +2190,294 @@ class OkulZilApp:
             messagebox.showerror("Hata", f"İçe aktarma sırasında hata oluştu: {e}", parent=self.root)
 
     # -------------------------------------------------------------
-    # SEKME 4: SİSTEM & GELİŞMİŞ AYARLAR
+    # SEKME 5: KENDİ ANONSU OLUŞTURUCU (YAPAY ZEKA ANONS STÜDYOSU)
+    # -------------------------------------------------------------
+    def _kur_tab_anons_olustur(self):
+        canvas = tk.Canvas(self.tab_anons_olustur, borderwidth=0, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.tab_anons_olustur, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # ÜST BİLGİ KARTI
+        f_info = ttk.LabelFrame(scrollable_frame, text="🎙️ Yapay Zeka Doğal Seslendirme & Anons Stüdyosu", padding=10)
+        f_info.pack(fill="x", expand=True, padx=5, pady=6)
+
+        ttk.Label(
+            f_info,
+            text="Okulunuz için anons metnini yazın, kadın/erkek öğretmen ses modelleriyle seslendirin,\n"
+                 "dinleyip önizleyin ve tek tıkla doğrudan programın anons kütüphanesine kaydedin.",
+            font=("Helvetica", 9), foreground="#495057"
+        ).pack(anchor="w")
+
+        # 1. KART: METİN GİRİŞİ & HAZIR ŞABLONLAR
+        f_metin = ttk.LabelFrame(scrollable_frame, text="✍️ Anons Metni", padding=10)
+        f_metin.pack(fill="x", expand=True, padx=5, pady=6)
+
+        ttk.Label(f_metin, text="Hazır Örnek Şablonlar (Tıklayarak Yükleyin):", font=("Helvetica", 9, "bold")).pack(anchor="w", pady=(0, 4))
+
+        f_btn_sablon = ttk.Frame(f_metin)
+        f_btn_sablon.pack(fill="x", pady=(0, 6))
+
+        sablonlar = [
+            ("🔔 Ders Bitişi", "Çay İlkokulu'nun Sevgili Öğrencileri ve Değerli Öğretmenleri! Derslerimiz sona ermiştir. Çay İlkokulu ailesi olarak iyi günler dileriz!"),
+            ("🏫 Servis / Çıkış", "Sevgili öğrenciler, derslerimiz sona ermiştir. Servislerinize ve evinize dikkatli gidiniz. Hepinize iyi akşamlar."),
+            ("☔ Yağmurlu Hava", "Dikkat! Dışarıda yağış olduğundan teneffüste bahçeye çıkılmayacaktır. Lütfen koridorlarda koşmadan sakin şekilde dinlenelim."),
+            ("🇹🇷 Tören Çağrısı", "Değerli öğretmenlerimiz ve sevgili öğrencilerimiz! Bayrak töreni için lütfen sırayla okul bahçesinde toplanınız."),
+            ("👥 Öğretmenler Kurulu", "Değerli öğretmenlerimiz, ders bitiminde öğretmenler odasında kısa bir kurul toplantısı yapılacaktır."),
+            ("🧹 Temizle", "")
+        ]
+
+        for btn_adi, metin_icerik in sablonlar:
+            if btn_adi == "🧹 Temizle":
+                btn = ttk.Button(f_btn_sablon, text=btn_adi, command=lambda: self._anons_metni_yaz(""))
+            else:
+                btn = ttk.Button(f_btn_sablon, text=btn_adi, command=lambda m=metin_icerik: self._anons_metni_yaz(m))
+            btn.pack(side="left", padx=2, pady=2)
+
+        self.txt_anons_metin = tk.Text(f_metin, height=4, font=("Helvetica", 10), wrap="word")
+        self.txt_anons_metin.pack(fill="x", expand=True, pady=4)
+        self.txt_anons_metin.insert("1.0", "Çay İlkokulu'nun Sevgili Öğrencileri ve Değerli Öğretmenleri! Derslerimiz sona ermiştir. Çay İlkokulu ailesi olarak iyi günler dileriz!")
+
+        # 2. KART: SES VE TONLAMA AYARLARI
+        f_ses = ttk.LabelFrame(scrollable_frame, text="🎭 Seslendirmen ve Tonlama Ayarları", padding=10)
+        f_ses.pack(fill="x", expand=True, padx=5, pady=6)
+
+        row1 = ttk.Frame(f_ses)
+        row1.pack(fill="x", pady=3)
+        ttk.Label(row1, text="Ses Modeli:", width=14, font=("Helvetica", 9, "bold")).pack(side="left")
+        self.combo_ses_modeli = ttk.Combobox(row1, state="readonly", width=48)
+        self.combo_ses_modeli["values"] = [
+            "👩 Emel (Kadın Öğretmen - Tatlı & Neşeli İlkokul)",
+            "👩 Emel (Kadın Öğretmen - Sıcak & Doğal)",
+            "👩 Emel (Kadın Öğretmen - Resmi & Standart)",
+            "👨 Ahmet (Erkek Öğretmen - Babacan & Neşeli)",
+            "👨 Ahmet (Erkek Öğretmen - Sıcak & Sakin)",
+            "👨 Ahmet (Erkek Öğretmen - Resmi & Standart)"
+        ]
+        self.combo_ses_modeli.current(0)
+        self.combo_ses_modeli.pack(side="left", padx=5)
+
+        row2 = ttk.Frame(f_ses)
+        row2.pack(fill="x", pady=3)
+        ttk.Label(row2, text="Konuşma Hızı:", width=14, font=("Helvetica", 9)).pack(side="left")
+        self.combo_anons_hiz = ttk.Combobox(row2, state="readonly", width=22)
+        self.combo_anons_hiz["values"] = [
+            "Çok Sakin / Yavaş (-10%)",
+            "Sakin / İlkokul (-5%)",
+            "Normal Hız (0%)",
+            "Hafif Hızlı (+5%)",
+            "Hızlı / Dinamik (+10%)"
+        ]
+        self.combo_anons_hiz.current(1)
+        self.combo_anons_hiz.pack(side="left", padx=5)
+
+        ttk.Label(row2, text="Neşe / Canlılık (Pitch):", font=("Helvetica", 9)).pack(side="left", padx=(12, 5))
+        self.combo_anons_pitch = ttk.Combobox(row2, state="readonly", width=20)
+        self.combo_anons_pitch["values"] = [
+            "Çok Neşeli (+6Hz)",
+            "Neşeli & Canlı (+3Hz)",
+            "Standart / Doğal (0Hz)",
+            "Tok / Ağırbaşlı (-3Hz)"
+        ]
+        self.combo_anons_pitch.current(0)
+        self.combo_anons_pitch.pack(side="left", padx=5)
+
+        # 3. KART: ÖNİZLEME & DİNLEME
+        f_onizleme = ttk.LabelFrame(scrollable_frame, text="▶️ Dinleme & Önizleme", padding=10)
+        f_onizleme.pack(fill="x", expand=True, padx=5, pady=6)
+
+        row_play = ttk.Frame(f_onizleme)
+        row_play.pack(fill="x", pady=3)
+
+        self.btn_anons_onizle = tk.Button(
+            row_play, text="▶️ Önizlemeyi Dinle", font=("Helvetica", 10, "bold"),
+            bg="#0284c7", fg="white", activebackground="#0369a1", activeforeground="white",
+            relief="raised", bd=2, cursor="hand2", padx=12, pady=4,
+            command=self._anons_onizleme_yap
+        )
+        self.btn_anons_onizle.pack(side="left", padx=(0, 8))
+
+        self.btn_anons_durdur = tk.Button(
+            row_play, text="⏹ Durdur", font=("Helvetica", 10, "bold"),
+            bg="#ef4444", fg="white", activebackground="#dc2626", activeforeground="white",
+            relief="raised", bd=2, cursor="hand2", padx=12, pady=4,
+            command=self._anons_onizleme_durdur
+        )
+        self.btn_anons_durdur.pack(side="left", padx=(0, 12))
+
+        self.lbl_anons_durum = ttk.Label(row_play, text="Hazır. 'Önizlemeyi Dinle' butonuna basabilirsiniz.", font=("Helvetica", 9, "italic"), foreground="#4b5563")
+        self.lbl_anons_durum.pack(side="left")
+
+        # 4. KART: KAYDETME VE PROGRAMA EKLEME
+        f_kayit = ttk.LabelFrame(scrollable_frame, text="💾 Anonsu Kaydet & Programa Tanıt", padding=10)
+        f_kayit.pack(fill="x", expand=True, padx=5, pady=6)
+
+        row_k1 = ttk.Frame(f_kayit)
+        row_k1.pack(fill="x", pady=3)
+
+        ttk.Label(row_k1, text="Dosya Adı:", width=14, font=("Helvetica", 9, "bold")).pack(side="left")
+        self.ent_anons_dosya_adi = ttk.Entry(row_k1, width=28, font=("Helvetica", 10))
+        self.ent_anons_dosya_adi.insert(0, "yeni_anons")
+        self.ent_anons_dosya_adi.pack(side="left", padx=5)
+        ttk.Label(row_k1, text=".mp3", font=("Helvetica", 10, "bold"), foreground="#6b7280").pack(side="left")
+
+        row_k2 = ttk.Frame(f_kayit)
+        row_k2.pack(fill="x", pady=3)
+
+        kayit_yeri = anons_kayit_dizini_getir()
+        ttk.Label(row_k2, text="Kayıt Klasörü:", width=14, font=("Helvetica", 9)).pack(side="left")
+        self.lbl_kayit_klasoru = ttk.Label(row_k2, text=kayit_yeri, font=("Helvetica", 8), foreground="#2563eb")
+        self.lbl_kayit_klasoru.pack(side="left", padx=5)
+
+        row_k3 = ttk.Frame(f_kayit)
+        row_k3.pack(fill="x", pady=4)
+
+        self.var_anons_hizliya_ekle = tk.BooleanVar(value=True)
+        chk_hizli = ttk.Checkbutton(
+            row_k3,
+            text="Ana Ekrandaki '📢 Özel Sesli Anonslar' hızlı duyuru butonlarına otomatik ekle",
+            variable=self.var_anons_hizliya_ekle
+        )
+        chk_hizli.pack(side="left")
+
+        row_k4 = ttk.Frame(f_kayit)
+        row_k4.pack(fill="x", pady=6)
+
+        btn_kaydet_anons = tk.Button(
+            row_k4, text="💾 Anonslar Kütüphanesine Kaydet", font=("Helvetica", 10, "bold"),
+            bg="#16a34a", fg="white", activebackground="#15803d", activeforeground="white",
+            relief="raised", bd=2, cursor="hand2", padx=14, pady=5,
+            command=self._anons_kaydet_islemi
+        )
+        btn_kaydet_anons.pack(side="left")
+
+    def _anons_metni_yaz(self, metin):
+        self.txt_anons_metin.delete("1.0", "end")
+        if metin:
+            self.txt_anons_metin.insert("1.0", metin)
+
+    def _anons_parametrelerini_al(self):
+        secili_model = self.combo_ses_modeli.get()
+        ses = "tr-TR-EmelNeural"
+        if "Ahmet" in secili_model:
+            ses = "tr-TR-AhmetNeural"
+
+        hiz_str = self.combo_anons_hiz.get()
+        rate = "-5%"
+        if "-10%" in hiz_str: rate = "-10%"
+        elif "-5%" in hiz_str: rate = "-5%"
+        elif "0%" in hiz_str: rate = "+0%"
+        elif "+5%" in hiz_str: rate = "+5%"
+        elif "+10%" in hiz_str: rate = "+10%"
+
+        pitch_str = self.combo_anons_pitch.get()
+        pitch = "+5Hz"
+        if "+6Hz" in pitch_str: pitch = "+6Hz"
+        elif "+3Hz" in pitch_str: pitch = "+3Hz"
+        elif "0Hz" in pitch_str: pitch = "+0Hz"
+        elif "-3Hz" in pitch_str: pitch = "-3Hz"
+
+        return ses, rate, pitch
+
+    def _anons_onizleme_yap(self):
+        metin = self.txt_anons_metin.get("1.0", "end").strip()
+        if not metin:
+            messagebox.showwarning("Uyarı", "Lütfen seslendirilecek bir anons metni yazın!", parent=self.root)
+            return
+
+        ses, rate, pitch = self._anons_parametrelerini_al()
+        self.lbl_anons_durum.config(text="⏳ Yapay zeka seslendiriyor, lütfen bekleyin...", foreground="#d97706")
+        self.btn_anons_onizle.config(state="disabled")
+
+        import tempfile
+        temp_mp3 = os.path.join(tempfile.gettempdir(), f"onizleme_anons_{int(time.time())}.mp3")
+
+        def _arka_plan():
+            ok, msg = ai_anons_sentezle(metin, temp_mp3, ses_modeli=ses, rate=rate, pitch=pitch)
+            def _gui():
+                self.btn_anons_onizle.config(state="normal")
+                if ok:
+                    self.lbl_anons_durum.config(text="▶️ Önizleme çalınıyor...", foreground="#16a34a")
+                    motor = self.ayarlar["genel"].get("ses_motoru", "otomatik")
+                    aygit = self.ayarlar["genel"].get("ses_aygiti", "default")
+                    vol = self.ayarlar["genel"].get("ses_seviyesi", 90)
+                    self.player.play(temp_mp3, volume=vol, title="Anons Önizleme", preferred=motor, target_device=aygit)
+                else:
+                    self.lbl_anons_durum.config(text=f"❌ Hata: {msg}", foreground="#dc2626")
+                    messagebox.showerror("Hata", f"Ses oluşturulamadı:\n{msg}", parent=self.root)
+            self.root.after(0, _gui)
+
+        threading.Thread(target=_arka_plan, daemon=True).start()
+
+    def _anons_onizleme_durdur(self):
+        self.player.stop_all()
+        self.lbl_anons_durum.config(text="⏹ Önizleme durduruldu.", foreground="#4b5563")
+
+    def _anons_kaydet_islemi(self):
+        metin = self.txt_anons_metin.get("1.0", "end").strip()
+        if not metin:
+            messagebox.showwarning("Uyarı", "Lütfen kaydedilecek bir anons metni yazın!", parent=self.root)
+            return
+
+        dosya_adi = self.ent_anons_dosya_adi.get().strip()
+        if not dosya_adi:
+            messagebox.showwarning("Uyarı", "Lütfen anons için bir dosya adı girin!", parent=self.root)
+            return
+
+        # Güvenli dosya adı yap
+        for c in r'\/:*?"<>| ':
+            dosya_adi = dosya_adi.replace(c, "_")
+        if not dosya_adi.endswith(".mp3"):
+            dosya_adi += ".mp3"
+
+        kayit_klasoru = anons_kayit_dizini_getir()
+        os.makedirs(kayit_klasoru, exist_ok=True)
+        hedef_tam_yol = os.path.join(kayit_klasoru, dosya_adi)
+
+        ses, rate, pitch = self._anons_parametrelerini_al()
+        self.lbl_anons_durum.config(text="⏳ Dosya kaydediliyor...", foreground="#d97706")
+
+        def _arka_plan():
+            ok, msg = ai_anons_sentezle(metin, hedef_tam_yol, ses_modeli=ses, rate=rate, pitch=pitch)
+            def _gui():
+                if ok:
+                    self.lbl_anons_durum.config(text=f"✅ Kaydedildi: {dosya_adi}", foreground="#16a34a")
+                    if self.var_anons_hizliya_ekle.get():
+                        baslik = dosya_adi.replace(".mp3", "").replace("_", " ").title()
+                        yeni_anons = {
+                            "id": f"anons_{int(time.time())}",
+                            "baslik": f"📢 {baslik}",
+                            "dosya": hedef_tam_yol
+                        }
+                        if "anonslar" not in self.ayarlar:
+                            self.ayarlar["anonslar"] = []
+                        self.ayarlar["anonslar"].append(yeni_anons)
+                        self.ayarlari_kaydet()
+                        self._ciz_anons_listesi()
+                        self._guncelle_hizli_anonslar()
+
+                    messagebox.showinfo(
+                        "Başarılı",
+                        f"Anons ses dosyası başarıyla üretildi ve kaydedildi!\n\n"
+                        f"📁 Konum: {hedef_tam_yol}\n"
+                        f"{'✅ Ana ekrandaki hızlı duyuru butonlarına eklendi.' if self.var_anons_hizliya_ekle.get() else ''}",
+                        parent=self.root
+                    )
+                else:
+                    self.lbl_anons_durum.config(text=f"❌ Hata: {msg}", foreground="#dc2626")
+                    messagebox.showerror("Kayıt Hatası", f"Anons kaydedilemedi:\n{msg}", parent=self.root)
+            self.root.after(0, _gui)
+
+        threading.Thread(target=_arka_plan, daemon=True).start()
+
+    # -------------------------------------------------------------
+    # SEKME 6: SİSTEM & GELİŞMİŞ AYARLAR
     # -------------------------------------------------------------
     def _kur_tab_ayarlar(self):
         canvas = tk.Canvas(self.tab_ayarlar, borderwidth=0, highlightthickness=0)

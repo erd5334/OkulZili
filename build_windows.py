@@ -18,7 +18,7 @@ if hasattr(sys.stderr, "reconfigure"):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(BASE_DIR, "WINDOWS_KURULUMSUZ_OKUL_ZILI")
-ZIP_OUTPUT = os.path.join(BASE_DIR, "OkulZili-v2.6.0-Windows-Portable.zip")
+ZIP_OUTPUT = os.path.join(BASE_DIR, "OkulZili-v2.7.0-Windows-Portable.zip")
 
 def prepare_icon():
     ico_path = os.path.join(BASE_DIR, "app_icon.ico")
@@ -35,7 +35,7 @@ def prepare_icon():
 
 def build_exe():
     print("=" * 60)
-    print("   Er Yazilim Okul Zili v2.6.0 - Windows Derleme")
+    print("   Er Yazilim Okul Zili v2.7.0 - Windows Derleme")
     print("=" * 60)
     
     ico_path = prepare_icon()

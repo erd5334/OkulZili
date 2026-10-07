@@ -13,7 +13,7 @@ import struct
 import shutil
 
 PACKAGE_NAME = "okul-zili"
-VERSION = "2.6.0"
+VERSION = "2.7.0"
 ARCHITECTURE = "all"
 MAINTAINER = "Er Yazılım <info@eryazilim.com>"
 DESCRIPTION = """Er Yazılım Okul Zil ve Tören Sistemi
