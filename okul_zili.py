@@ -23,6 +23,16 @@ from tkinter import ttk, messagebox, filedialog
 
 warnings.filterwarnings("ignore", category=RuntimeWarning, message=".*Failed to disconnect.*")
 
+def _global_excepthook(exc_type, exc_value, exc_traceback):
+    try:
+        print(f"[HATA / EXCEPTION] {exc_type.__name__}: {exc_value}")
+    except Exception:
+        pass
+
+sys.excepthook = _global_excepthook
+if hasattr(threading, "excepthook"):
+    threading.excepthook = lambda args: _global_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
+
 # Uygulama Dizinleri
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
@@ -347,6 +357,10 @@ class SoundPlayer:
                             with self.lock:
                                 if not is_teneffus:
                                     self.currently_playing_title = ""
+                            try:
+                                p_player.stop()
+                            except Exception:
+                                pass
                             if on_finish:
                                 try:
                                     on_finish()
@@ -461,12 +475,7 @@ class SoundPlayer:
                     pass
             if self.process:
                 try:
-                    if sys.platform == "win32":
-                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.process.pid)],
-                                       creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    else:
-                        self.process.terminate()
-                        self.process.kill()
+                    self.process.kill()
                 except Exception:
                     pass
                 self.process = None
@@ -485,12 +494,7 @@ class SoundPlayer:
                     pass
             if self.teneffus_process:
                 try:
-                    if sys.platform == "win32":
-                        subprocess.run(["taskkill", "/F", "/T", "/PID", str(self.teneffus_process.pid)],
-                                       creationflags=subprocess.CREATE_NO_WINDOW, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    else:
-                        self.teneffus_process.terminate()
-                        self.teneffus_process.kill()
+                    self.teneffus_process.kill()
                 except Exception:
                     pass
                 self.teneffus_process = None
@@ -566,8 +570,23 @@ class OkulZilApp:
         # Periyodik GUI güncellemesi (1 saniye)
         self._gui_guncelle()
 
+        # Qt Multimedia olay döngüsü pompası (Tkinter ile PySide6 senkronizasyonu)
+        self._qt_event_dongusu()
+
         # Kapatma protokolü
         self.root.protocol("WM_DELETE_WINDOW", self._on_kapat)
+
+    def _qt_event_dongusu(self):
+        if hasattr(self, "player") and self.player and self.player.qt_app:
+            try:
+                self.player.qt_app.processEvents()
+            except Exception:
+                pass
+        if getattr(self, "calisiyor", True):
+            try:
+                self.root.after(40, self._qt_event_dongusu)
+            except Exception:
+                pass
 
     def _ikon_yukle(self):
         for icon_name in ["ezil1.png", "ezil2.png", "ezil0.png"]:
