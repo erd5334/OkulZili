@@ -205,41 +205,34 @@ VARSAYILAN_AYARLAR = {
 
 
 class SoundPlayer:
-    """Hafif, sessiz ve güvenilir ses oynatma motoru (Linux & Windows).
-    Gelişmiş Ses Kartı / Amfi Çıkışı Yönlendirme Desteği İçerir."""
+    """Hafif, sessiz, ultra kararlı ve çökmeyen ses oynatma motoru (Linux & Windows).
+    Pygame SDL2 ve Çoklu Çıkış Motoru Desteği İçerir."""
     def __init__(self):
         self.process = None
         self.teneffus_process = None
         self.lock = threading.RLock()
         self.currently_playing_title = ""
+        self.pygame_available = False
+        self._init_pygame()
         self.available_engines = self._detect_engines()
-        self.qt_app = None
-        self.qt_player = None
-        self.qt_audio_output = None
-        self.qt_teneffus_player = None
-        self.qt_teneffus_audio_output = None
-        self._init_qt()
 
-    def _init_qt(self):
+    def _init_pygame(self):
         try:
-            from PySide6.QtCore import QCoreApplication
-            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
-            self.qt_app = QCoreApplication.instance() or QCoreApplication(sys.argv)
-
-            # Ana Zil & Tören Oynatıcısı
-            self.qt_player = QMediaPlayer()
-            self.qt_audio_output = QAudioOutput()
-            self.qt_player.setAudioOutput(self.qt_audio_output)
-
-            # Teneffüs & Arka Plan Müzik Çaları
-            self.qt_teneffus_player = QMediaPlayer()
-            self.qt_teneffus_audio_output = QAudioOutput()
-            self.qt_teneffus_player.setAudioOutput(self.qt_teneffus_audio_output)
-        except Exception:
-            pass
+            import pygame
+            if not pygame.mixer.get_init():
+                pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+                pygame.mixer.set_num_channels(8)
+            self.pygame_available = True
+            self.chan_zil = pygame.mixer.Channel(0)
+            self.chan_teneffus = pygame.mixer.Channel(1)
+        except Exception as e:
+            self.pygame_available = False
+            print(f"[PYGAME INIT UYARISI] {e}")
 
     def _detect_engines(self):
         engines = []
+        if self.pygame_available:
+            engines.append("pygame")
         for cmd in ["mpv", "ffplay", "mplayer", "cvlc", "paplay", "aplay"]:
             if shutil.which(cmd):
                 engines.append(cmd)
@@ -248,22 +241,10 @@ class SoundPlayer:
         return engines
 
     def get_audio_devices(self):
-        """Sistemde mevcut olan tüm ses çıkış aygıtlarını (Hoparlör, Kulaklık, USB Ses Kartı, vb.) listeler."""
+        """Sistemde mevcut olan tüm ses çıkış aygıtlarını listeler."""
         devices = [("Varsayılan Sistem Çıkışı", "default")]
 
-        # 1. Qt Audio Endpoints (Windows & Linux)
-        try:
-            from PySide6.QtMultimedia import QMediaDevices
-            for d in QMediaDevices.audioOutputs():
-                desc = d.description()
-                if desc and desc not in [dev[0] for dev in devices]:
-                    devices.append((desc, desc))
-            if len(devices) > 1:
-                return devices
-        except Exception:
-            pass
-
-        # 2. mpv --audio-device=help (Linux & Windows)
+        # 1. mpv --audio-device=help (Linux & Windows)
         if shutil.which("mpv"):
             try:
                 flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -279,7 +260,7 @@ class SoundPlayer:
             except Exception:
                 pass
 
-        # 3. Windows WinMM / PowerShell Endpoints
+        # 2. Windows WinMM / DirectSound
         if sys.platform == "win32":
             try:
                 import ctypes
@@ -307,6 +288,8 @@ class SoundPlayer:
     def get_best_engine(self, preferred="otomatik"):
         if preferred != "otomatik" and preferred in self.available_engines:
             return preferred
+        if self.pygame_available:
+            return "pygame"
         for eng in ["mpv", "ffplay", "mplayer", "cvlc", "paplay", "aplay", "windows_media"]:
             if eng in self.available_engines:
                 return eng
@@ -327,55 +310,37 @@ class SoundPlayer:
 
             vol_val = max(0, min(100, int(volume)))
 
-            # 1. Qt Multimedia (En Hızlı, Sıfır Gecikme, Tam Aygıt Desteği)
-            p_player = self.qt_teneffus_player if is_teneffus else self.qt_player
-            p_output = self.qt_teneffus_audio_output if is_teneffus else self.qt_audio_output
-
-            if p_player and p_output and preferred in ["otomatik", "qt"]:
+            # 1. Pygame SDL2 Audio (En Kararlı, Sıfır Çökme, Bağımsız Kanallar)
+            if self.pygame_available and (preferred in ["otomatik", "pygame"] or not self.get_best_engine(preferred)):
                 try:
-                    from PySide6.QtCore import QUrl
-                    from PySide6.QtMultimedia import QMediaDevices, QMediaPlayer
-
-                    if target_device and target_device != "default":
-                        target_dev = None
-                        for d in QMediaDevices.audioOutputs():
-                            if d.description() == target_device or target_device in d.description():
-                                target_dev = d
-                                break
-                        if target_dev:
-                            p_output.setDevice(target_dev)
-                    else:
-                        p_output.setDevice(QMediaDevices.defaultAudioOutput())
-
-                    p_output.setVolume(vol_val / 100.0)
-                    p_player.setSource(QUrl.fromLocalFile(os.path.abspath(file_path)))
+                    import pygame
+                    sound = pygame.mixer.Sound(os.path.abspath(file_path))
+                    sound.set_volume(vol_val / 100.0)
+                    target_chan = self.chan_teneffus if is_teneffus else self.chan_zil
+                    target_chan.stop()
+                    target_chan.play(sound)
                     if not is_teneffus:
                         self.currently_playing_title = title
 
-                    def on_status_change(status):
-                        if status == QMediaPlayer.MediaStatus.EndOfMedia:
-                            with self.lock:
-                                if not is_teneffus:
-                                    self.currently_playing_title = ""
+                    def monitor_pygame(chan, is_ten):
+                        try:
+                            while chan.get_busy():
+                                time.sleep(0.05)
+                        except Exception:
+                            pass
+                        with self.lock:
+                            if not is_ten:
+                                self.currently_playing_title = ""
+                        if on_finish:
                             try:
-                                p_player.stop()
+                                on_finish()
                             except Exception:
                                 pass
-                            if on_finish:
-                                try:
-                                    on_finish()
-                                except Exception:
-                                    pass
 
-                    try:
-                        p_player.mediaStatusChanged.disconnect()
-                    except Exception:
-                        pass
-                    p_player.mediaStatusChanged.connect(on_status_change)
-                    p_player.play()
+                    threading.Thread(target=monitor_pygame, args=(target_chan, is_teneffus), daemon=True).start()
                     return True
                 except Exception as e:
-                    print(f"[QT ÇALMA HATASI - DİĞER MOTORLARA GEÇİLİYOR] {e}")
+                    print(f"[PYGAME OYNATMA HATASI] {e}")
 
             # 2. Standart Harici Oynatıcı Motorlar
             engine = self.get_best_engine(preferred=preferred)
@@ -464,13 +429,9 @@ class SoundPlayer:
 
     def stop(self):
         with self.lock:
-            if self.qt_player:
+            if self.pygame_available and hasattr(self, "chan_zil"):
                 try:
-                    self.qt_player.mediaStatusChanged.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.qt_player.stop()
+                    self.chan_zil.stop()
                 except Exception:
                     pass
             if self.process:
@@ -483,13 +444,9 @@ class SoundPlayer:
 
     def stop_teneffus(self):
         with self.lock:
-            if self.qt_teneffus_player:
+            if self.pygame_available and hasattr(self, "chan_teneffus"):
                 try:
-                    self.qt_teneffus_player.mediaStatusChanged.disconnect()
-                except Exception:
-                    pass
-                try:
-                    self.qt_teneffus_player.stop()
+                    self.chan_teneffus.stop()
                 except Exception:
                     pass
             if self.teneffus_process:
@@ -505,20 +462,13 @@ class SoundPlayer:
 
     def is_playing(self):
         with self.lock:
-            qt_playing = False
-            if self.qt_player:
+            if self.pygame_available:
                 try:
-                    from PySide6.QtMultimedia import QMediaPlayer
-                    qt_playing = (self.qt_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
+                    if self.chan_zil.get_busy() or self.chan_teneffus.get_busy():
+                        return True
                 except Exception:
                     pass
-            if self.qt_teneffus_player:
-                try:
-                    from PySide6.QtMultimedia import QMediaPlayer
-                    qt_playing = qt_playing or (self.qt_teneffus_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState)
-                except Exception:
-                    pass
-            return qt_playing or self.process is not None or self.teneffus_process is not None
+            return self.process is not None or self.teneffus_process is not None
 
 
 class OkulZilApp:
