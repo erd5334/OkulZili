@@ -125,6 +125,7 @@ ZIL_TURLERI = {
     "ogretmen": "Öğretmen Giriş Zili",
     "cikis": "Teneffüs Zili",
     "gun_sonu_cikis": "🏠 Okul Çıkış / Gün Sonu Müziği",
+    "anons": "📢 Özel Anons / Belirli Ses",
     "istiklal": "İstiklal Marşı",
     "saygi_istiklal": "Saygı Duruşu + İstiklal",
     "saygi": "Saygı Duruşu (Ti Sesi)",
@@ -823,8 +824,15 @@ class OkulZilApp:
         )
         btn_sihirbaz.pack(side="left", padx=(0, 6), ipady=4)
 
-        btn_yeni = ttk.Button(f_ust, text="➕ Yeni Zil Ekle", command=self.manuel_zil_ekle_penceresi)
-        btn_yeni.pack(side="left", padx=4)
+        btn_yeni = ttk.Button(f_ust, text="➕ Yeni Zil / Saat Ekle", command=self.manuel_zil_ekle_penceresi)
+        btn_yeni.pack(side="left", padx=3)
+
+        btn_anons_ekle = tk.Button(
+            f_ust, text="📢 Saatli Anons Ekle", font=("Helvetica", 9, "bold"),
+            bg="#d97706", fg="white", activebackground="#b45309", activeforeground="white",
+            relief="raised", bd=2, cursor="hand2", command=lambda: self.manuel_zil_ekle_penceresi(varsayilan_tur="anons")
+        )
+        btn_anons_ekle.pack(side="left", padx=3, ipady=1)
 
         btn_duzenle = ttk.Button(f_ust, text="✏️ Seçileni Düzenle", command=self.zil_duzenle_penceresi)
         btn_duzenle.pack(side="left", padx=4)
@@ -891,7 +899,11 @@ class OkulZilApp:
                     continue
 
             durum = "✅ Aktif" if item.get("aktif", True) else "❌ Pasif"
-            tur_ad = ZIL_TURLERI.get(item["tur"], item["tur"])
+            if item.get("tur") == "anons":
+                baslik = item.get("baslik") or "Özel Anons"
+                tur_ad = f"📢 Anons: {baslik}"
+            else:
+                tur_ad = ZIL_TURLERI.get(item["tur"], item["tur"])
             tree_iid = f"item_{real_idx}"
             self.tree.insert("", "end", iid=tree_iid, values=(durum, item["saat"], tur_ad, item["gunler"]))
 
@@ -989,10 +1001,44 @@ class OkulZilApp:
 
         return f_gunler, var_dict, get_secilen_gunler_str
 
-    def manuel_zil_ekle_penceresi(self):
+    def mevcut_anonslari_listele(self):
+        """Sistemde ve anons klasörlerinde bulunan tüm anons ve ses dosyalarını döner."""
+        anonslar = []
+        gorulen_yollar = set()
+
+        # 1. Ayarlardaki anons listesi
+        for a in self.ayarlar.get("anonslar", []):
+            dosya = a.get("dosya", "")
+            if dosya and os.path.exists(dosya):
+                norm = os.path.normpath(dosya)
+                if norm not in gorulen_yollar:
+                    gorulen_yollar.add(norm)
+                    baslik = a.get("baslik", "").strip() or os.path.basename(dosya)
+                    anonslar.append((baslik, norm))
+
+        # 2. Anons klasörleri
+        taranacaklar = [
+            anons_kayit_dizini_getir(),
+            os.path.join(APP_DIR, "musics", "e-zil-ses", "Anonslar"),
+            ANONSLAR_USER_DIR
+        ]
+        for d in taranacaklar:
+            if os.path.exists(d):
+                for f in sorted(os.listdir(d)):
+                    if f.lower().endswith((".mp3", ".wav", ".ogg")):
+                        tam_yol = os.path.normpath(os.path.join(d, f))
+                        if tam_yol not in gorulen_yollar:
+                            gorulen_yollar.add(tam_yol)
+                            ad = os.path.splitext(f)[0].replace("_", " ").strip()
+                            anonslar.append((f"📢 {ad}", tam_yol))
+
+        return anonslar
+
+    def manuel_zil_ekle_penceresi(self, varsayilan_tur="ogrenci"):
         w = tk.Toplevel(self.root)
-        w.title("Yeni Zil Saati Ekle")
-        w.geometry("480x420")
+        w.title("Yeni Zil veya Saatli Anons Ekle")
+        w.geometry("520x560")
+        w.minsize(490, 520)
         w.transient(self.root)
         w.grab_set()
 
@@ -1003,25 +1049,125 @@ class OkulZilApp:
         secili_filtre = self.cmb_filtre_gun.get() if hasattr(self, "cmb_filtre_gun") else "Tüm Günler"
         varsayilan_gun = "Hafta İçi (Pzt-Cum)" if secili_filtre == "Tüm Günler" else secili_filtre
 
-        ttk.Label(f, text="Zil Saati (SS:DD):").pack(anchor="w", pady=(0, 2))
+        ttk.Label(f, text="Zaman / Saat (SS:DD):").pack(anchor="w", pady=(0, 2))
         ent_saat = ttk.Entry(f, font=("Helvetica", 11))
-        ent_saat.insert(0, "08:30")
+        ent_saat.insert(0, "10:15" if varsayilan_tur == "anons" else "08:30")
         ent_saat.pack(fill="x", pady=(0, 8))
 
-        ttk.Label(f, text="Zil Türü:").pack(anchor="w", pady=(0, 2))
-        cmb_tur = ttk.Combobox(f, values=[ZIL_TURLERI["ogrenci"], ZIL_TURLERI["ogretmen"], ZIL_TURLERI["cikis"], ZIL_TURLERI["gun_sonu_cikis"]], state="readonly")
-        cmb_tur.current(0)
+        ttk.Label(f, text="Görev / Zil Türü:").pack(anchor="w", pady=(0, 2))
+        tur_etiketleri = [
+            ZIL_TURLERI["ogrenci"],
+            ZIL_TURLERI["ogretmen"],
+            ZIL_TURLERI["cikis"],
+            ZIL_TURLERI["gun_sonu_cikis"],
+            ZIL_TURLERI["anons"]
+        ]
+        cmb_tur = ttk.Combobox(f, values=tur_etiketleri, state="readonly", font=("Helvetica", 10))
+        if varsayilan_tur == "anons":
+            cmb_tur.set(ZIL_TURLERI["anons"])
+        else:
+            cmb_tur.set(ZIL_TURLERI.get(varsayilan_tur, ZIL_TURLERI["ogrenci"]))
         cmb_tur.pack(fill="x", pady=(0, 8))
 
+        # --- ÖZEL ANONS PANELİ ---
+        f_anons = ttk.LabelFrame(f, text="📢 Özel Anons ve Ses Ayarları", padding=10)
+        anons_listesi = self.mevcut_anonslari_listele()
+        anons_adlari = [item[0] for item in anons_listesi]
+        anons_yollari = [item[1] for item in anons_listesi]
+
+        var_secili_dosya = tk.StringVar(value="")
+
+        ttk.Label(f_anons, text="Çalınacak Anons / Ses Dosyası:").pack(anchor="w", pady=(0, 2))
+        f_anons_sel = ttk.Frame(f_anons)
+        f_anons_sel.pack(fill="x", pady=(0, 6))
+
+        cmb_anons = ttk.Combobox(f_anons_sel, values=anons_adlari, state="readonly")
+        cmb_anons.pack(side="left", fill="x", expand=True, padx=(0, 6))
+
+        def gozat_anons():
+            yol = filedialog.askopenfilename(
+                parent=w,
+                title="Özel Anons / Ses Dosyası Seç",
+                filetypes=[("Ses Dosyaları (*.mp3, *.wav, *.ogg)", "*.mp3 *.wav *.ogg"), ("Tüm Dosyalar (*.*)", "*.*")]
+            )
+            if yol:
+                var_secili_dosya.set(os.path.normpath(yol))
+                dosya_ad = os.path.splitext(os.path.basename(yol))[0].replace("_", " ").strip()
+                cmb_anons.set(f"📁 {dosya_ad}")
+                if not ent_baslik.get() or ent_baslik.get() == "Özel Anons":
+                    ent_baslik.delete(0, "end")
+                    ent_baslik.insert(0, dosya_ad)
+
+        btn_gozat = ttk.Button(f_anons_sel, text="📁 Gözat...", command=gozat_anons)
+        btn_gozat.pack(side="right")
+
+        def on_anons_sec(event=None):
+            idx = cmb_anons.current()
+            if 0 <= idx < len(anons_yollari):
+                var_secili_dosya.set(anons_yollari[idx])
+                secilen_ad = anons_adlari[idx].replace("📢 ", "").strip()
+                if not ent_baslik.get() or ent_baslik.get() == "Özel Anons":
+                    ent_baslik.delete(0, "end")
+                    ent_baslik.insert(0, secilen_ad)
+
+        cmb_anons.bind("<<ComboboxSelected>>", on_anons_sec)
+
+        if anons_listesi:
+            cmb_anons.current(0)
+            var_secili_dosya.set(anons_yollari[0])
+            ilk_ad = anons_adlari[0].replace("📢 ", "").strip()
+        else:
+            ilk_ad = "Özel Anons"
+
+        ttk.Label(f_anons, text="Anons Başlığı (Çizelgede ve bildirimde görünecek):").pack(anchor="w", pady=(0, 2))
+        ent_baslik = ttk.Entry(f_anons, font=("Helvetica", 10))
+        ent_baslik.insert(0, ilk_ad)
+        ent_baslik.pack(fill="x", pady=(0, 8))
+
+        # Önizleme Dinleme Butonları
+        f_dinle = ttk.Frame(f_anons)
+        f_dinle.pack(fill="x", pady=(0, 2))
+
+        def anons_onizle_cal():
+            yol = var_secili_dosya.get()
+            if not yol or not os.path.exists(yol):
+                messagebox.showwarning("Uyarı", "Lütfen önce geçerli bir ses veya anons dosyası seçin!", parent=w)
+                return
+            vol = self.ayarlar["genel"].get("ses_seviyesi", 90)
+            target_dev = self.ayarlar["genel"].get("ses_aygiti", "default")
+            pref_engine = self.ayarlar["genel"].get("ses_motoru", "otomatik")
+            self.player.play(yol, volume=vol, title="Anons Önizleme", preferred=pref_engine, target_device=target_dev)
+
+        def anons_onizle_dur():
+            self.player.stop()
+
+        btn_dinle = ttk.Button(f_dinle, text="▶ Anonsu Dinle", command=anons_onizle_cal)
+        btn_dinle.pack(side="left", padx=(0, 6))
+        btn_dur = ttk.Button(f_dinle, text="⏹ Durdur", command=anons_onizle_dur)
+        btn_dur.pack(side="left")
+
         # Gün Seçimi Checkbox'ları
-        _, _, get_gunler_str = self._gunler_secimi_olustur(f, baslangic_gun_kurali=varsayilan_gun)
+        f_gunler, _, get_gunler_str = self._gunler_secimi_olustur(f, baslangic_gun_kurali=varsayilan_gun)
+
+        def tur_guncelle(event=None):
+            if cmb_tur.get() == ZIL_TURLERI["anons"]:
+                f_anons.pack(fill="x", pady=(0, 8), before=f_gunler)
+                w.geometry("520x560")
+            else:
+                f_anons.pack_forget()
+                self.player.stop()
+                w.geometry("480x430")
+
+        cmb_tur.bind("<<ComboboxSelected>>", tur_guncelle)
+        if cmb_tur.get() == ZIL_TURLERI["anons"]:
+            f_anons.pack(fill="x", pady=(0, 8), before=f_gunler)
 
         def kaydet():
             saat = ent_saat.get().strip()
             try:
                 datetime.strptime(saat, "%H:%M")
             except ValueError:
-                messagebox.showerror("Hata", "Saat formatı hatalı! (Örnek: 08:30 veya 14:05)", parent=w)
+                messagebox.showerror("Hata", "Saat formatı hatalı! (Örnek: 08:30 veya 10:15)", parent=w)
                 return
 
             secili_tur_ad = cmb_tur.get()
@@ -1029,21 +1175,38 @@ class OkulZilApp:
             gunler_str = get_gunler_str()
 
             if not gunler_str:
-                messagebox.showwarning("Uyarı", "Lütfen zilin çalacağı en az bir gün seçin!", parent=w)
+                messagebox.showwarning("Uyarı", "Lütfen zilin/anonsun çalacağı en az bir gün seçin!", parent=w)
                 return
 
-            self.ayarlar["program"].append({
+            yeni_oge = {
                 "saat": saat,
                 "tur": tur_kod,
                 "gunler": gunler_str,
                 "aktif": True
-            })
+            }
+
+            if tur_kod == "anons":
+                dosya_yolu = var_secili_dosya.get().strip()
+                if not dosya_yolu or not os.path.exists(dosya_yolu):
+                    messagebox.showerror("Hata", "Lütfen çalınacak geçerli bir anons veya ses dosyası seçin!", parent=w)
+                    return
+                baslik = ent_baslik.get().strip() or os.path.splitext(os.path.basename(dosya_yolu))[0]
+                yeni_oge["dosya"] = dosya_yolu
+                yeni_oge["baslik"] = baslik
+
+            self.player.stop()
+            self.ayarlar["program"].append(yeni_oge)
             self.ayarlari_kaydet()
             self.tabloyu_doldur()
             w.destroy()
 
+        def pencere_kapat():
+            self.player.stop()
+            w.destroy()
+        w.protocol("WM_DELETE_WINDOW", pencere_kapat)
+
         btn_kaydet = tk.Button(
-            f, text="💾 Zili Kaydet ve Ekle", font=("Helvetica", 10, "bold"),
+            f, text="💾 Kaydet ve Çizelgeye Ekle", font=("Helvetica", 10, "bold"),
             bg="#2b9348", fg="white", relief="raised", bd=2, cursor="hand2", command=kaydet
         )
         btn_kaydet.pack(fill="x", ipady=5, pady=(10, 0))
@@ -1057,38 +1220,141 @@ class OkulZilApp:
         zil = self.ayarlar["program"][real_idx]
 
         w = tk.Toplevel(self.root)
-        w.title("Zil Saatini ve Günlerini Düzenle")
-        w.geometry("480x440")
+        w.title("Zil veya Saatli Anonsu Düzenle")
+        w.geometry("520x580")
+        w.minsize(490, 520)
         w.transient(self.root)
         w.grab_set()
 
         f = ttk.Frame(w, padding=15)
         f.pack(fill="both", expand=True)
 
-        ttk.Label(f, text="Zil Saati (SS:DD):").pack(anchor="w", pady=(0, 2))
+        ttk.Label(f, text="Zaman / Saat (SS:DD):").pack(anchor="w", pady=(0, 2))
         ent_saat = ttk.Entry(f, font=("Helvetica", 11))
         ent_saat.insert(0, zil.get("saat", "08:30"))
         ent_saat.pack(fill="x", pady=(0, 8))
 
-        ttk.Label(f, text="Zil Türü:").pack(anchor="w", pady=(0, 2))
-        cmb_tur = ttk.Combobox(f, values=[ZIL_TURLERI["ogrenci"], ZIL_TURLERI["ogretmen"], ZIL_TURLERI["cikis"], ZIL_TURLERI["gun_sonu_cikis"]], state="readonly")
+        ttk.Label(f, text="Görev / Zil Türü:").pack(anchor="w", pady=(0, 2))
+        tur_etiketleri = [
+            ZIL_TURLERI["ogrenci"],
+            ZIL_TURLERI["ogretmen"],
+            ZIL_TURLERI["cikis"],
+            ZIL_TURLERI["gun_sonu_cikis"],
+            ZIL_TURLERI["anons"]
+        ]
+        cmb_tur = ttk.Combobox(f, values=tur_etiketleri, state="readonly", font=("Helvetica", 10))
         mevcut_tur_ad = ZIL_TURLERI.get(zil.get("tur", "ogrenci"), ZIL_TURLERI["ogrenci"])
         cmb_tur.set(mevcut_tur_ad)
         cmb_tur.pack(fill="x", pady=(0, 8))
 
+        # --- ÖZEL ANONS PANELİ ---
+        f_anons = ttk.LabelFrame(f, text="📢 Özel Anons ve Ses Ayarları", padding=10)
+        anons_listesi = self.mevcut_anonslari_listele()
+        anons_adlari = [item[0] for item in anons_listesi]
+        anons_yollari = [item[1] for item in anons_listesi]
+
+        mevcut_dosya = zil.get("dosya", "") or zil.get("ozel_ses", "")
+        var_secili_dosya = tk.StringVar(value=mevcut_dosya)
+
+        ttk.Label(f_anons, text="Çalınacak Anons / Ses Dosyası:").pack(anchor="w", pady=(0, 2))
+        f_anons_sel = ttk.Frame(f_anons)
+        f_anons_sel.pack(fill="x", pady=(0, 6))
+
+        cmb_anons = ttk.Combobox(f_anons_sel, values=anons_adlari, state="readonly")
+        cmb_anons.pack(side="left", fill="x", expand=True, padx=(0, 6))
+
+        def gozat_anons():
+            yol = filedialog.askopenfilename(
+                parent=w,
+                title="Özel Anons / Ses Dosyası Seç",
+                filetypes=[("Ses Dosyaları (*.mp3, *.wav, *.ogg)", "*.mp3 *.wav *.ogg"), ("Tüm Dosyalar (*.*)", "*.*")]
+            )
+            if yol:
+                var_secili_dosya.set(os.path.normpath(yol))
+                dosya_ad = os.path.splitext(os.path.basename(yol))[0].replace("_", " ").strip()
+                cmb_anons.set(f"📁 {dosya_ad}")
+                if not ent_baslik.get() or ent_baslik.get() == "Özel Anons":
+                    ent_baslik.delete(0, "end")
+                    ent_baslik.insert(0, dosya_ad)
+
+        btn_gozat = ttk.Button(f_anons_sel, text="📁 Gözat...", command=gozat_anons)
+        btn_gozat.pack(side="right")
+
+        def on_anons_sec(event=None):
+            idx = cmb_anons.current()
+            if 0 <= idx < len(anons_yollari):
+                var_secili_dosya.set(anons_yollari[idx])
+                secilen_ad = anons_adlari[idx].replace("📢 ", "").strip()
+                if not ent_baslik.get() or ent_baslik.get() == "Özel Anons":
+                    ent_baslik.delete(0, "end")
+                    ent_baslik.insert(0, secilen_ad)
+
+        cmb_anons.bind("<<ComboboxSelected>>", on_anons_sec)
+
+        # Mevcut dosyayı listede bul
+        norm_mevcut = os.path.normpath(mevcut_dosya) if mevcut_dosya else ""
+        if norm_mevcut in anons_yollari:
+            idx = anons_yollari.index(norm_mevcut)
+            cmb_anons.current(idx)
+        elif mevcut_dosya:
+            cmb_anons.set(f"📁 {os.path.basename(mevcut_dosya)}")
+        elif anons_listesi:
+            cmb_anons.current(0)
+            var_secili_dosya.set(anons_yollari[0])
+
+        ttk.Label(f_anons, text="Anons Başlığı (Çizelgede ve bildirimde görünecek):").pack(anchor="w", pady=(0, 2))
+        ent_baslik = ttk.Entry(f_anons, font=("Helvetica", 10))
+        ent_baslik.insert(0, zil.get("baslik", "Özel Anons"))
+        ent_baslik.pack(fill="x", pady=(0, 8))
+
+        # Önizleme Dinleme Butonları
+        f_dinle = ttk.Frame(f_anons)
+        f_dinle.pack(fill="x", pady=(0, 2))
+
+        def anons_onizle_cal():
+            yol = var_secili_dosya.get()
+            if not yol or not os.path.exists(yol):
+                messagebox.showwarning("Uyarı", "Lütfen önce geçerli bir ses veya anons dosyası seçin!", parent=w)
+                return
+            vol = self.ayarlar["genel"].get("ses_seviyesi", 90)
+            target_dev = self.ayarlar["genel"].get("ses_aygiti", "default")
+            pref_engine = self.ayarlar["genel"].get("ses_motoru", "otomatik")
+            self.player.play(yol, volume=vol, title="Anons Önizleme", preferred=pref_engine, target_device=target_dev)
+
+        def anons_onizle_dur():
+            self.player.stop()
+
+        btn_dinle = ttk.Button(f_dinle, text="▶ Anonsu Dinle", command=anons_onizle_cal)
+        btn_dinle.pack(side="left", padx=(0, 6))
+        btn_dur = ttk.Button(f_dinle, text="⏹ Durdur", command=anons_onizle_dur)
+        btn_dur.pack(side="left")
+
         var_aktif = tk.BooleanVar(value=zil.get("aktif", True))
-        chk_aktif = ttk.Checkbutton(f, text="Bu zil aktif olarak çalışsın", variable=var_aktif)
+        chk_aktif = ttk.Checkbutton(f, text="Bu kayıt aktif olarak çalışsın", variable=var_aktif)
         chk_aktif.pack(anchor="w", pady=(0, 6))
 
         # Gün Seçimi Checkbox'ları
-        _, _, get_gunler_str = self._gunler_secimi_olustur(f, baslangic_gun_kurali=zil.get("gunler", "Hafta İçi (Pzt-Cum)"))
+        f_gunler, _, get_gunler_str = self._gunler_secimi_olustur(f, baslangic_gun_kurali=zil.get("gunler", "Hafta İçi (Pzt-Cum)"))
+
+        def tur_guncelle(event=None):
+            if cmb_tur.get() == ZIL_TURLERI["anons"]:
+                f_anons.pack(fill="x", pady=(0, 8), before=chk_aktif)
+                w.geometry("520x580")
+            else:
+                f_anons.pack_forget()
+                self.player.stop()
+                w.geometry("480x450")
+
+        cmb_tur.bind("<<ComboboxSelected>>", tur_guncelle)
+        if cmb_tur.get() == ZIL_TURLERI["anons"]:
+            f_anons.pack(fill="x", pady=(0, 8), before=chk_aktif)
 
         def guncelle():
             saat = ent_saat.get().strip()
             try:
                 datetime.strptime(saat, "%H:%M")
             except ValueError:
-                messagebox.showerror("Hata", "Saat formatı hatalı! (Örnek: 08:30 veya 14:05)", parent=w)
+                messagebox.showerror("Hata", "Saat formatı hatalı! (Örnek: 08:30 veya 10:15)", parent=w)
                 return
 
             secili_tur_ad = cmb_tur.get()
@@ -1099,15 +1365,32 @@ class OkulZilApp:
                 messagebox.showwarning("Uyarı", "Lütfen en az bir gün seçin!", parent=w)
                 return
 
-            self.ayarlar["program"][real_idx] = {
+            guncel_oge = {
                 "saat": saat,
                 "tur": tur_kod,
                 "gunler": gunler_str,
                 "aktif": var_aktif.get()
             }
+
+            if tur_kod == "anons":
+                dosya_yolu = var_secili_dosya.get().strip()
+                if not dosya_yolu or not os.path.exists(dosya_yolu):
+                    messagebox.showerror("Hata", "Lütfen çalınacak geçerli bir anons veya ses dosyası seçin!", parent=w)
+                    return
+                baslik = ent_baslik.get().strip() or os.path.splitext(os.path.basename(dosya_yolu))[0]
+                guncel_oge["dosya"] = dosya_yolu
+                guncel_oge["baslik"] = baslik
+
+            self.player.stop()
+            self.ayarlar["program"][real_idx] = guncel_oge
             self.ayarlari_kaydet()
             self.tabloyu_doldur()
             w.destroy()
+
+        def pencere_kapat():
+            self.player.stop()
+            w.destroy()
+        w.protocol("WM_DELETE_WINDOW", pencere_kapat)
 
         btn_guncelle = tk.Button(
             f, text="💾 Değişiklikleri Kaydet", font=("Helvetica", 10, "bold"),
@@ -1133,11 +1416,16 @@ class OkulZilApp:
         kaynak_ziller = []
         for z in self.ayarlar["program"]:
             if self._gun_uygun_mu(z.get("gunler", ""), kaynak_gun_idx):
-                kaynak_ziller.append({
+                k_item = {
                     "saat": z["saat"],
                     "tur": z["tur"],
                     "aktif": z.get("aktif", True)
-                })
+                }
+                if "dosya" in z:
+                    k_item["dosya"] = z["dosya"]
+                if "baslik" in z:
+                    k_item["baslik"] = z["baslik"]
+                kaynak_ziller.append(k_item)
 
         if not kaynak_ziller:
             messagebox.showwarning("Uyarı", f"'{secili_gun}' gününe ait hiçbir zil kaydı bulunamadı!", parent=self.root)
@@ -1222,12 +1510,17 @@ class OkulZilApp:
 
             # Kaynak zilleri yeni gün kuralıyla ekle
             for kz in kaynak_ziller:
-                yeni_program.append({
+                yeni_oge = {
                     "saat": kz["saat"],
                     "tur": kz["tur"],
                     "gunler": gunler_str,
                     "aktif": kz["aktif"]
-                })
+                }
+                if "dosya" in kz:
+                    yeni_oge["dosya"] = kz["dosya"]
+                if "baslik" in kz:
+                    yeni_oge["baslik"] = kz["baslik"]
+                yeni_program.append(yeni_oge)
 
             self.ayarlar["program"] = yeni_program
             self.ayarlari_kaydet()
@@ -2773,15 +3066,19 @@ class OkulZilApp:
                 tur = z["tur"]
 
                 if self._gun_uygun_mu(gun_kurali, haftanin_gunu) and su_an == saat:
-                    anahtar = f"{su_an}_{tur}_{now.strftime('%Y%m%d')}"
+                    anahtar_ek = z.get("baslik", "") if tur == "anons" else tur
+                    anahtar = f"{su_an}_{tur}_{anahtar_ek}_{now.strftime('%Y%m%d')}"
                     if anahtar not in self.calinanlar_set:
                         self.calinanlar_set.add(anahtar)
-                        tur_adi = ZIL_TURLERI.get(tur, tur)
+                        if tur == "anons":
+                            tur_adi = f"📢 Anons: {z.get('baslik', 'Özel Anons')}"
+                        else:
+                            tur_adi = ZIL_TURLERI.get(tur, tur)
                         self.son_calan_bilgi = f"{su_an} - {tur_adi}"
-                        print(f"[ZİL ÇALIYOR] {su_an} -> {tur_adi}")
+                        print(f"[ZİL/ANONS ÇALIYOR] {su_an} -> {tur_adi}")
 
                         if not self.sessiz_mod:
-                            self._otomatik_zil_cal(tur, tur_adi)
+                            self._otomatik_zil_cal(z, tur_adi)
                         else:
                             print(f"[SINAV MODU DEVREDE] {tur_adi} susturuldu.")
 
@@ -2791,21 +3088,43 @@ class OkulZilApp:
 
             time.sleep(1)
 
-    def _otomatik_zil_cal(self, tur, tur_adi):
-        # Ders başlangıçlarında veya gün sonu çıkışında çalan müziği kes
-        if tur != "cikis":
+    def _otomatik_zil_cal(self, z_item, tur_adi):
+        if isinstance(z_item, dict):
+            tur = z_item.get("tur", "ogrenci")
+            yol = z_item.get("dosya", "") or z_item.get("ozel_ses", "")
+        else:
+            tur = z_item
+            yol = ""
+
+        muzik_caliyordu = getattr(self, "muzik_caliyor", False)
+
+        if tur == "anons":
+            # Teneffüs müziğini anons çalarken geçici olarak kes
+            if muzik_caliyordu:
+                self.muzik_durdur()
+            if not yol or not os.path.exists(yol):
+                print(f"[ANONS DOSYASI BULUNAMADI] {yol}")
+                return
+        elif tur != "cikis":
+            # Ders başlangıcında veya gün sonu çıkışında müziği durdur
             self.muzik_durdur()
+            yol = self.ayarlar["sesler"].get(tur, "")
+        else:
+            yol = self.ayarlar["sesler"].get(tur, "")
 
         vol = self.ayarlar["genel"].get("ses_seviyesi", 90)
-        yol = self.ayarlar["sesler"].get(tur, "")
         if yol and os.path.exists(yol):
             self.root.after(0, lambda: self.lbl_calan.config(text=f"🔔 Çalıyor: {tur_adi}"))
-            self.root.after(0, lambda: self.lbl_status.config(text=f"Otomatik Zil: {tur_adi}"))
+            self.root.after(0, lambda: self.lbl_status.config(text=f"Otomatik Yayın: {tur_adi}"))
 
             def bitti():
                 self.root.after(0, lambda: self.lbl_calan.config(text=""))
                 if tur == "cikis":
                     self.teneffus_muzigi_baslat()
+                elif tur == "anons" and muzik_caliyordu:
+                    # Anons bittiğinde teneffüs devam ediyorsa müziği yeniden başlat
+                    if self.ayarlar["genel"].get("teneffus_muzik_aktif", False):
+                        self.teneffus_muzigi_baslat()
 
             target_dev = self.ayarlar["genel"].get("ses_aygiti", "default")
             pref_engine = self.ayarlar["genel"].get("ses_motoru", "otomatik")
@@ -2852,10 +3171,13 @@ class OkulZilApp:
                 self.lbl_siradaki.config(text="🔕 Sınav Modu Aktif (Süresiz)")
             self.lbl_kalan_sure.config(text="Ziller Susturuldu")
         elif en_yakin_zil is not None:
-            tur_adi = ZIL_TURLERI.get(en_yakin_zil["tur"], en_yakin_zil["tur"])
+            if en_yakin_zil.get("tur") == "anons":
+                tur_adi = f"📢 {en_yakin_zil.get('baslik', 'Özel Anons')}"
+            else:
+                tur_adi = ZIL_TURLERI.get(en_yakin_zil["tur"], en_yakin_zil["tur"])
             dakika = int(en_yakin_fark // 60)
             saniye = int(en_yakin_fark % 60)
-            self.lbl_siradaki.config(text=f"Sıradaki Zil: {en_yakin_zil['saat']} ({tur_adi})")
+            self.lbl_siradaki.config(text=f"Sıradaki: {en_yakin_zil['saat']} ({tur_adi})")
             self.lbl_kalan_sure.config(text=f"Kalan Süre: {dakika:02d} dk {saniye:02d} sn")
         else:
             self.lbl_siradaki.config(text="Bugün için başka zil bulunmuyor.")
