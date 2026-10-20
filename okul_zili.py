@@ -117,7 +117,10 @@ def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0
     except ImportError:
         return False, "edge-tts kütüphanesi kurulu değil. Lütfen 'pip install edge-tts' çalıştırın."
     except Exception as e:
-        return False, f"Ses sentezleme hatası: {e}"
+        err_str = str(e)
+        if "403" in err_str or "Invalid response status" in err_str:
+            return False, "Microsoft TTS sunucusu erişim protokolünü güncelledi. Program güncel edge-tts motoruyla yeniden paketlendi."
+        return False, f"Ses sentezleme hatası: {err_str}"
 
 # Zil Türleri ve İsimleri
 ZIL_TURLERI = {

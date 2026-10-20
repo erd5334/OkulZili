@@ -47,6 +47,8 @@ def build_exe():
         "--windowed",
         "--name", "OkulZili",
         "--clean",
+        "--collect-all", "edge_tts",
+        "--collect-all", "certifi",
     ]
     
     if ico_path:
