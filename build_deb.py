@@ -220,6 +220,17 @@ StartupNotify=true
                     full_p = os.path.join(root, file)
                     rel_p = os.path.relpath(full_p, base_dir).replace("\\", "/")
                     add_fs_file(f"./usr/share/okul-zili/{rel_p}", full_p)
+
+        # models/ klasörü içeriği (Piper TTS modelleri)
+        models_dir = os.path.join(base_dir, "models")
+        if os.path.exists(models_dir):
+            for root, dirs, files in os.walk(models_dir):
+                rel_dir = os.path.relpath(root, base_dir).replace("\\", "/")
+                add_dir(f"./usr/share/okul-zili/{rel_dir}")
+                for file in files:
+                    full_p = os.path.join(root, file)
+                    rel_p = os.path.relpath(full_p, base_dir).replace("\\", "/")
+                    add_fs_file(f"./usr/share/okul-zili/{rel_p}", full_p)
                     
     data_tar_data = data_tar_io.getvalue()
     

@@ -34,7 +34,10 @@ if hasattr(threading, "excepthook"):
     threading.excepthook = lambda args: _global_excepthook(args.exc_type, args.exc_value, args.exc_traceback)
 
 # Uygulama Dizinleri
-APP_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
 
 if sys.platform == "win32":
@@ -90,11 +93,92 @@ def anons_kayit_dizini_getir():
     os.makedirs(ANONSLAR_USER_DIR, exist_ok=True)
     return ANONSLAR_USER_DIR
 
-def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0%", pitch="+0Hz"):
+def piper_anons_sentezle(metin, cikti_yolu):
     """
-    edge-tts kullanarak metni sese dönüştürür ve cikti_yolu'na kaydeder.
-    SSL sertifikası hatalarına karşı esnek (MEB / antivirüs SSL inspection korumalı) çalışır.
+    Yerel Piper TTS (tr_TR-dfki-medium) modeli ile tamamen çevrimdışı Türkçe erkek sesi sentezler.
+    Windows non-ASCII kullanıcı yolu sorunlarına karşı 8.3 kısa yol korumalı çalışır.
     """
+    try:
+        import piper
+        from piper import PiperVoice
+        import wave
+        import subprocess
+        import shutil
+
+        olasi_model_yollari = [
+            os.path.join(APP_DIR, "models", "tr_TR-dfki-medium.onnx"),
+            os.path.join(DATA_DIR, "models", "tr_TR-dfki-medium.onnx"),
+            os.path.join(os.getcwd(), "models", "tr_TR-dfki-medium.onnx"),
+            "/usr/share/okul-zili/models/tr_TR-dfki-medium.onnx",
+            "/usr/share/e-zil/models/tr_TR-dfki-medium.onnx"
+        ]
+        model_path = None
+        for p in olasi_model_yollari:
+            if os.path.exists(p):
+                model_path = p
+                break
+
+        if not model_path:
+            return False, "Piper Türkçe erkek ses modeli ('models/tr_TR-dfki-medium.onnx') bulunamadı."
+
+        config_path = model_path + ".json"
+        if not os.path.exists(config_path):
+            config_path = model_path.replace(".onnx", ".onnx.json")
+
+        p_dir = os.path.dirname(piper.__file__)
+
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                buf_p = ctypes.create_unicode_buffer(500)
+                if ctypes.windll.kernel32.GetShortPathNameW(p_dir, buf_p, 500) > 0 and buf_p.value:
+                    p_dir = buf_p.value
+                buf_m = ctypes.create_unicode_buffer(500)
+                if ctypes.windll.kernel32.GetShortPathNameW(model_path, buf_m, 500) > 0 and buf_m.value:
+                    model_path = buf_m.value
+                if os.path.exists(config_path):
+                    buf_c = ctypes.create_unicode_buffer(500)
+                    if ctypes.windll.kernel32.GetShortPathNameW(config_path, buf_c, 500) > 0 and buf_c.value:
+                        config_path = buf_c.value
+            except Exception:
+                pass
+            os.environ["ESPEAK_DATA_PATH"] = p_dir
+
+        voice = PiperVoice.load(model_path, config_path=config_path if os.path.exists(config_path) else None, espeak_data_dir=p_dir)
+
+        wav_cikti = cikti_yolu if cikti_yolu.lower().endswith(".wav") else cikti_yolu + ".tmp.wav"
+        with wave.open(wav_cikti, "wb") as wav_file:
+            voice.synthesize_wav(metin, wav_file)
+
+        if cikti_yolu.lower().endswith(".mp3") and wav_cikti != cikti_yolu:
+            try:
+                flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                res = subprocess.run(["ffmpeg", "-y", "-i", wav_cikti, "-b:a", "192k", cikti_yolu],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags)
+                if res.returncode == 0 and os.path.exists(cikti_yolu) and os.path.getsize(cikti_yolu) > 0:
+                    try: os.remove(wav_cikti)
+                    except Exception: pass
+                    return True, "Başarılı (Yerel Piper AI)"
+            except Exception:
+                pass
+            if os.path.exists(cikti_yolu):
+                try: os.remove(cikti_yolu)
+                except Exception: pass
+            shutil.move(wav_cikti, cikti_yolu)
+
+        return True, "Başarılı (Yerel Piper AI)"
+    except ImportError:
+        return False, "piper-tts kütüphanesi kurulu değil. Lütfen 'pip install piper-tts' çalıştırın."
+    except Exception as e:
+        return False, f"Piper yerel ses sentezleme hatası: {e}"
+
+def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="piper_erkek", rate="+0%", pitch="+0Hz"):
+    """
+    Yerel Piper TTS (Erkek) veya Microsoft Edge TTS (Kadın/Bulut) ile metni sese dönüştürür.
+    """
+    if ses_modeli == "piper_erkek" or "piper" in ses_modeli.lower() or "yerel erkek" in ses_modeli.lower():
+        return piper_anons_sentezle(metin, cikti_yolu)
+
     import ssl
     import asyncio
     try:
@@ -116,8 +200,12 @@ def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0
             asyncio.run(_uret(ses_modeli))
             return True, "Başarılı"
         except Exception as e:
-            # Microsoft sunucusunda Ahmet sesi yanıt vermezse otomatik olarak Emel sesine geç
+            # Microsoft sunucusunda Ahmet sesi yanıt vermezse otomatik olarak Piper veya Emel'e geç
             if "No audio was received" in str(e) and ses_modeli != "tr-TR-EmelNeural":
+                # Önce yerel piper dene
+                p_ok, p_msg = piper_anons_sentezle(metin, cikti_yolu)
+                if p_ok:
+                    return True, "Başarılı (Yerel Erkek Piper AI kullanıldı)"
                 try:
                     asyncio.run(_uret("tr-TR-EmelNeural"))
                     return True, "Başarılı (Ahmet modeli sunucuda geçici olarak yanıt vermediği için Emel modeli kullanıldı)"
@@ -131,7 +219,7 @@ def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0
         if "403" in err_str or "Invalid response status" in err_str:
             return False, "Microsoft TTS sunucusu erişim protokolünü güncelledi. Program güncel edge-tts motoruyla çalışıyor."
         if "No audio was received" in err_str:
-            return False, "Microsoft TTS sunucusu bu ses modeline yanıt vermedi. Lütfen 'Emel (Kadın Öğretmen)' ses modelini seçiniz."
+            return False, "Microsoft TTS sunucusu bu ses modeline yanıt vermedi. Lütfen 'Yerel Erkek Öğretmen' veya 'Emel' modelini seçiniz."
         return False, f"Ses sentezleme hatası: {err_str}"
 
 # Zil Türleri ve İsimleri
@@ -2515,12 +2603,11 @@ class OkulZilApp:
         ttk.Label(row1, text="Ses Modeli:", width=14, font=("Helvetica", 9, "bold")).pack(side="left")
         self.combo_ses_modeli = ttk.Combobox(row1, state="readonly", width=48)
         self.combo_ses_modeli["values"] = [
+            "👨 Yerel Erkek Öğretmen (Piper AI - %100 Çevrimdışı & Bağımsız)",
             "👩 Emel (Kadın Öğretmen - Tatlı & Neşeli İlkokul)",
             "👩 Emel (Kadın Öğretmen - Sıcak & Doğal)",
             "👩 Emel (Kadın Öğretmen - Resmi & Standart)",
-            "👨 Ahmet (Erkek Öğretmen - Babacan & Neşeli)",
-            "👨 Ahmet (Erkek Öğretmen - Sıcak & Sakin)",
-            "👨 Ahmet (Erkek Öğretmen - Resmi & Standart)"
+            "👨 Ahmet (Erkek Öğretmen - Microsoft Bulut)"
         ]
         self.combo_ses_modeli.current(0)
         self.combo_ses_modeli.pack(side="left", padx=5)
@@ -2626,9 +2713,12 @@ class OkulZilApp:
 
     def _anons_parametrelerini_al(self):
         secili_model = self.combo_ses_modeli.get()
-        ses = "tr-TR-EmelNeural"
-        if "Ahmet" in secili_model:
+        if "Piper" in secili_model or "Yerel Erkek" in secili_model:
+            ses = "piper_erkek"
+        elif "Ahmet" in secili_model:
             ses = "tr-TR-AhmetNeural"
+        else:
+            ses = "tr-TR-EmelNeural"
 
         hiz_str = self.combo_anons_hiz.get()
         rate = "-5%"

@@ -49,6 +49,8 @@ def build_exe():
         "--clean",
         "--collect-all", "edge_tts",
         "--collect-all", "certifi",
+        "--collect-all", "piper",
+        "--collect-all", "onnxruntime",
     ]
     
     if ico_path:
@@ -87,6 +89,12 @@ def build_exe():
     dst_musics = os.path.join(OUTPUT_DIR, "musics")
     if os.path.exists(src_musics):
         shutil.copytree(src_musics, dst_musics, dirs_exist_ok=True)
+        
+    # models/ klasörünü ekle (Piper TTS Çevrimdışı Modelleri)
+    src_models = os.path.join(BASE_DIR, "models")
+    dst_models = os.path.join(OUTPUT_DIR, "models")
+    if os.path.exists(src_models):
+        shutil.copytree(src_models, dst_models, dirs_exist_ok=True)
         
     # ezil PNG görsellerini ekle
     for f in os.listdir(BASE_DIR):
