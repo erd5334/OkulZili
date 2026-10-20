@@ -108,18 +108,30 @@ def ai_anons_sentezle(metin, cikti_yolu, ses_modeli="tr-TR-EmelNeural", rate="+0
         if hasattr(edge_tts, "voices") and hasattr(edge_tts.voices, "_SSL_CTX"):
             edge_tts.voices._SSL_CTX = ssl_ctx
             
-        async def _uret():
-            communicate = edge_tts.Communicate(metin, ses_modeli, rate=rate, pitch=pitch)
+        async def _uret(secilen_ses):
+            communicate = edge_tts.Communicate(metin, secilen_ses, rate=rate, pitch=pitch)
             await communicate.save(cikti_yolu)
             
-        asyncio.run(_uret())
-        return True, "Başarılı"
+        try:
+            asyncio.run(_uret(ses_modeli))
+            return True, "Başarılı"
+        except Exception as e:
+            # Microsoft sunucusunda Ahmet sesi yanıt vermezse otomatik olarak Emel sesine geç
+            if "No audio was received" in str(e) and ses_modeli != "tr-TR-EmelNeural":
+                try:
+                    asyncio.run(_uret("tr-TR-EmelNeural"))
+                    return True, "Başarılı (Ahmet modeli sunucuda geçici olarak yanıt vermediği için Emel modeli kullanıldı)"
+                except Exception:
+                    pass
+            raise e
     except ImportError:
         return False, "edge-tts kütüphanesi kurulu değil. Lütfen 'pip install edge-tts' çalıştırın."
     except Exception as e:
         err_str = str(e)
         if "403" in err_str or "Invalid response status" in err_str:
-            return False, "Microsoft TTS sunucusu erişim protokolünü güncelledi. Program güncel edge-tts motoruyla yeniden paketlendi."
+            return False, "Microsoft TTS sunucusu erişim protokolünü güncelledi. Program güncel edge-tts motoruyla çalışıyor."
+        if "No audio was received" in err_str:
+            return False, "Microsoft TTS sunucusu bu ses modeline yanıt vermedi. Lütfen 'Emel (Kadın Öğretmen)' ses modelini seçiniz."
         return False, f"Ses sentezleme hatası: {err_str}"
 
 # Zil Türleri ve İsimleri
